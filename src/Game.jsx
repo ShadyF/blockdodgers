@@ -59,6 +59,7 @@ export class Game extends React.Component {
     }
 
     update() {
+        // if (!this.ships.length) this.startGame();
         const context = this.state.context;
 
         context.save();
@@ -68,6 +69,8 @@ export class Game extends React.Component {
         context.fillRect(0, 0, this.state.screen.width, this.state.screen.height);
         context.globalAlpha = 1;
 
+        this.checkCollisionsWithBlocks(this.ships);
+        this.cleanUp();
         this.renderObjects();
 
         context.restore();
@@ -78,20 +81,46 @@ export class Game extends React.Component {
 
     }
 
-    renderObjects(){
+    checkCollisionsWithBlocks(objectList) {
+        for (let object of objectList) {
+            for (let block of this.blocks) {
+                let vx = object.position.x - block.position.x;
+                let vy = object.position.y - block.position.y;
+                let length = Math.sqrt(vx * vx + vy * vy);
+                if (length < object.size + block.size) {
+                    object.destroy();
+                    block.destroy();
+                }
+            }
+        }
+    }
+
+    renderObjects() {
         let objects = [
             this.ships,
             this.blocks,
             this.bullets
         ];
 
-        for(let objectList of objects)
-        {
-            for(let i = 0; i < objectList.length; i++)
+        for (let objectList of objects) {
+            for (let i = 0; i < objectList.length; i++)
                 objectList[i].render(this.state);
         }
     }
 
+    cleanUp() {
+        let objects = [
+            this.ships,
+            this.blocks,
+            this.bullets
+        ];
+
+        for (let i = 0; i < objects.length; i++) {
+            for (let j = 0; j < objects[i].length; j++)
+                if(objects[i][j].destroyed)
+                    objects[i].splice(j, 1);
+        }
+    }
 
     startGame() {
         let ship = new Ship({
@@ -102,6 +131,8 @@ export class Game extends React.Component {
         });
 
         this.ships.push(ship);
+
+        this.blocks = this.bullets = [];
 
         let block = new Block({
             position: {
