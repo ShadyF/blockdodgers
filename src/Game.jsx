@@ -1,5 +1,6 @@
 import React from 'react';
 import Ship from './Ship';
+import Block from './Block'
 
 const KEY = {
     UP: 37,
@@ -26,6 +27,7 @@ export class Game extends React.Component {
         this.ships = [];
         this.blocks = [];
         this.bullets = [];
+
     }
 
     handleKeys(value, e) {
@@ -58,18 +60,38 @@ export class Game extends React.Component {
 
     update() {
         const context = this.state.context;
+
+        context.save();
+
         context.fillStyle = '#000';
         context.globalAlpha = 0.4;
         context.fillRect(0, 0, this.state.screen.width, this.state.screen.height);
         context.globalAlpha = 1;
 
-        this.ships[0].render(this.state);
+        this.renderObjects();
+
+        context.restore();
 
         requestAnimationFrame(() => {
             this.update()
         });
 
     }
+
+    renderObjects(){
+        let objects = [
+            this.ships,
+            this.blocks,
+            this.bullets
+        ];
+
+        for(let objectList of objects)
+        {
+            for(let i = 0; i < objectList.length; i++)
+                objectList[i].render(this.state);
+        }
+    }
+
 
     startGame() {
         let ship = new Ship({
@@ -80,6 +102,15 @@ export class Game extends React.Component {
         });
 
         this.ships.push(ship);
+
+        let block = new Block({
+            position: {
+                x: this.state.screen.width,
+                y: 50
+            }
+        });
+
+        this.blocks.push(block);
     }
 
     render() {
