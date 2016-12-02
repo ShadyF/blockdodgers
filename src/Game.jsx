@@ -48,9 +48,7 @@ export class Game extends React.Component {
 
         this.startGame();
 
-        requestAnimationFrame(()=> {
-            this.update()
-        })
+        requestAnimationFrame(()=> this.update());
     }
 
     componentWillUnmount() {
@@ -64,28 +62,35 @@ export class Game extends React.Component {
 
         context.save();
 
+        // Render the background
+        // Setting globalAlpha to 0.4 gives a motion trail effect
         context.fillStyle = '#000';
         context.globalAlpha = 0.4;
         context.fillRect(0, 0, this.state.screen.width, this.state.screen.height);
         context.globalAlpha = 1;
 
-        this.checkCollisionsWithBlocks(this.ships);
+        // Check for collisions between the ships and incoming blocks
+        this.checkCollisionWithBlocks(this.ships);
+
+        // Remove objects that have been destroyed from their respective lists
         this.cleanUp();
+
+        // Render all objects to the canvas
         this.renderObjects();
 
         context.restore();
 
-        requestAnimationFrame(() => {
-            this.update()
-        });
-
+        requestAnimationFrame(() => this.update());
     }
 
-    checkCollisionsWithBlocks(objectList) {
+    checkCollisionWithBlocks(objectList) {
         for (let object of objectList) {
             for (let block of this.blocks) {
                 let vx = object.position.x - block.position.x;
                 let vy = object.position.y - block.position.y;
+
+                // Given that the position coordinates of both objects is their middle point
+                // Destroy both objects if distance between them < the addition of the radii
                 let length = Math.sqrt(vx * vx + vy * vy);
                 if (length < object.size + block.size) {
                     object.destroy();
@@ -117,7 +122,7 @@ export class Game extends React.Component {
 
         for (let i = 0; i < objects.length; i++) {
             for (let j = 0; j < objects[i].length; j++)
-                if(objects[i][j].destroyed)
+                if (objects[i][j].destroyed)
                     objects[i].splice(j, 1);
         }
     }
