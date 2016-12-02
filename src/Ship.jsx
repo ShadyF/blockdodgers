@@ -8,6 +8,11 @@ export default class Ship {
         this.speed = 0.5;
         this.inertia = 0.95;
         this.size = 25;
+        this.destroyed = false;
+    }
+
+    destroy() {
+        this.destroyed = true;
     }
 
     render(state) {
