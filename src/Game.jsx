@@ -24,10 +24,10 @@ export class Game extends React.Component {
             score: 0,
             gameOver: false
         };
+
         this.ships = [];
         this.blocks = [];
         this.bullets = [];
-
     }
 
     handleKeys(value, e) {
@@ -94,7 +94,7 @@ export class Game extends React.Component {
                 let length = Math.sqrt(vx * vx + vy * vy);
                 if (length < object.size + block.size) {
                     object.destroy();
-                    block.destroy();
+                    // block.destroy();
                 }
             }
         }
