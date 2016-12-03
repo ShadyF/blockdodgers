@@ -22,12 +22,13 @@ export class Game extends React.Component {
                 down: 0,
             },
             score: 0,
-            gameOver: false
         };
 
         this.ships = [];
         this.blocks = [];
         this.bullets = [];
+        this.blockGenInterval = 30;
+        this.blockGenCounter = 0;
     }
 
     handleKeys(value, e) {
@@ -57,7 +58,7 @@ export class Game extends React.Component {
     }
 
     update() {
-        // if (!this.ships.length) this.startGame();
+        if (!this.ships.length) this.gameOver();
         const context = this.state.context;
 
         this.setState({
@@ -72,6 +73,13 @@ export class Game extends React.Component {
         context.globalAlpha = 0.4;
         context.fillRect(0, 0, this.state.screen.width, this.state.screen.height);
         context.globalAlpha = 1;
+
+        this.blockGenCounter += 1;
+
+        if (this.blockGenCounter === this.blockGenInterval) {
+            this.blockGenCounter = 0;
+            this.generateBlock();
+        }
 
         // Check for collisions between the ships and incoming blocks
         this.checkCollisionWithBlocks(this.ships);
@@ -104,6 +112,46 @@ export class Game extends React.Component {
         }
     }
 
+    generateBlock() {
+        let lastBlock = this.blocks[this.blocks.length - 1];
+
+        // let partitionDecider = this.getRandomInt(0, 2);
+        let newBlockSize = 15;
+        let blockPadding = 5;
+
+        // Generate block above
+        if (lastBlock.position.y - lastBlock.size > (newBlockSize * 2) + (blockPadding * 2)) {
+            let newBlock = new Block({
+                position: {
+                    x: this.state.screen.width,
+                    y: Game.getRandomInt(blockPadding + newBlockSize, lastBlock.position.y - lastBlock.size - blockPadding)
+                },
+                size: newBlockSize
+            });
+            this.blocks.push(newBlock);
+        }
+
+        // Generate block below
+        if (lastBlock.position.y + lastBlock.size < this.state.screen.height - (newBlockSize * 2 + blockPadding * 2)) {
+            let newBlock = new Block({
+                position: {
+                    x: this.state.screen.width,
+                    y: Game.getRandomInt(lastBlock.position.y + lastBlock.size + blockPadding,
+                        this.state.screen.height - newBlockSize - blockPadding)
+                },
+                size: newBlockSize
+            });
+            this.blocks.push(newBlock);
+        }
+
+    }
+
+    static getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    }
+
     renderObjects() {
         let objects = [
             this.ships,
@@ -132,6 +180,9 @@ export class Game extends React.Component {
     }
 
     startGame() {
+        this.ships = [];
+        this.blocks = [];
+        this.bullets = [];
         let ship = new Ship({
             position: {
                 x: 40,
@@ -141,16 +192,18 @@ export class Game extends React.Component {
 
         this.ships.push(ship);
 
-        this.blocks = this.bullets = [];
-
         let block = new Block({
             position: {
                 x: this.state.screen.width,
                 y: 50
-            }
+            },
+            size: 15
         });
-
         this.blocks.push(block);
+    }
+
+    gameOver() {
+
     }
 
     render() {

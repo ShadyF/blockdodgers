@@ -7,7 +7,7 @@ export default class Block {
             y: 0
         };
 
-        this.size = 15;
+        this.size = args.size;
         this.destroyed = false;
     }
 
