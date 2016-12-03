@@ -24,7 +24,7 @@ export default class Block {
         context.save();
 
         context.translate(this.position.x - this.size, this.position.y - this.size);
-        context.strokeStyle = '#ba0d0d';
+        context.strokeStyle = '#900600';
         context.fillStyle = '#000';
         context.lineWidth = 3;
         context.strokeRect(0, 0, this.size * 2, this.size * 2);

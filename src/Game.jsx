@@ -48,7 +48,7 @@ export class Game extends React.Component {
 
         this.startGame();
 
-        requestAnimationFrame(()=> this.update());
+        requestAnimationFrame(() => this.update());
     }
 
     componentWillUnmount() {
@@ -59,6 +59,10 @@ export class Game extends React.Component {
     update() {
         // if (!this.ships.length) this.startGame();
         const context = this.state.context;
+
+        this.setState({
+            score: this.state.score + 1
+        });
 
         context.save();
 
@@ -151,10 +155,13 @@ export class Game extends React.Component {
 
     render() {
         return (
-            <canvas ref="canvas"
-                    width={this.state.screen.width * this.state.screen.ratio}
-                    height={this.state.screen.width * this.state.screen.ratio}
-            />
+            <div>
+                <span className="score">Score: {this.state.score}</span>
+                <canvas ref="canvas"
+                        width={this.state.screen.width * this.state.screen.ratio}
+                        height={this.state.screen.width * this.state.screen.ratio}
+                />
+            </div>
         )
     }
 }
