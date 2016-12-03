@@ -5,9 +5,9 @@ export default class Ship {
             x: 0,
             y: 0
         };
-        this.speed = 0.5;
-        this.inertia = 0.95;
-        this.size = 25;
+        this.speed = 5;
+        this.inertia = 0.99;
+        this.size = 20;
         this.destroyed = false;
     }
 
@@ -15,24 +15,23 @@ export default class Ship {
         this.destroyed = true;
     }
 
-    render(state) {
-        if (state.keys.up)
+    render(state, keys) {
+        this.velocity.y = 0;
+        if (keys.up)
             this.velocity.y -= this.speed;
-        else if (state.keys.down)
+        if (keys.down)
             this.velocity.y += this.speed;
 
         this.position.y += this.velocity.y;
         this.velocity.y *= this.inertia;
 
         // Screen edges handling
-        if (this.position.y + this.size > state.screen.height) {
-            this.position.y = state.screen.height - this.size;
-            this.velocity.y = 0;
+        if (this.position.y > state.screen.height) {
+            this.destroy()
         }
 
-        else if (this.position.y - this.size < 0) {
-            this.position.y = this.size;
-            this.velocity.y = 0;
+        else if (this.position.y  < 0) {
+            this.destroy();
         }
 
         const context = state.context;
