@@ -115,7 +115,6 @@ export class Game extends React.Component {
     generateBlock() {
         let lastBlock = this.blocks[this.blocks.length - 1];
 
-        // let partitionDecider = this.getRandomInt(0, 2);
         let newBlockSize = 15;
         let blockPadding = 5;
 
