@@ -8,6 +8,16 @@
     color: white;
 }
 
+.max-score{
+    display: inline-block;
+    position: absolute;
+    top: 40px;
+    left: 15px;
+    z-index: 1;
+    font-size: 18px;
+    color: white;
+}
+
 .generation{
     display: inline-block;
     position: absolute;

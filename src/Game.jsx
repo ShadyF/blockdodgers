@@ -23,6 +23,7 @@ export class Game extends React.Component {
                 down: 0,
             },
             score: 0,
+            maxScore: 0,
             generation: 0,
             shipsAlive: 0
         };
@@ -191,14 +192,19 @@ export class Game extends React.Component {
             this.bullets
         ];
         for (let i = 0; i < this.ships.length; i++) {
-            if(this.ships[i].destroyed)
-            {
+            if (this.ships[i].destroyed) {
                 this.neuvol.networkScore(this.gen[i], this.state.score);
                 this.ships.splice(i, 1);
                 this.gen.splice(i, 1);
+
                 this.setState({
                     shipsAlive: this.state.shipsAlive - 1
-                })
+                });
+
+                if(this.state.score > this.state.maxScore)
+                    this.setState({
+                        maxScore: this.state.score
+                    })
             }
         }
         for (let i = 0; i < objects.length; i++) {
@@ -321,6 +327,7 @@ export class Game extends React.Component {
         return (
             <div>
                 <span className="score">Score: {this.state.score}</span>
+                <span className="max-score">Max Score: {this.state.maxScore}</span>
                 <span className="generation">Generation: {this.state.generation}</span>
                 <span className="ships-alive">Ships Alive: {this.state.shipsAlive} / {this.population} </span>
                 <canvas ref="canvas"
