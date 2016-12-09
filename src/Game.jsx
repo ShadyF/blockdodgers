@@ -23,8 +23,11 @@ export class Game extends React.Component {
                 down: 0,
             },
             score: 0,
+            generation: 0,
+            shipsAlive: 0
         };
-
+        this.population = 50;
+        this.network = [3, [4], 2];
         this.ships = [];
         this.blocks = [];
         this.bullets = [];
@@ -51,8 +54,8 @@ export class Game extends React.Component {
         this.setState({context: context});
 
         this.neuvol = new Neurovolution({
-            population: 50,
-            network: [3, [4], 2]
+            population: this.population,
+            network: this.network
         });
 
         this.startGame();
@@ -193,6 +196,9 @@ export class Game extends React.Component {
                 this.neuvol.networkScore(this.gen[i], this.state.score);
                 this.ships.splice(i, 1);
                 this.gen.splice(i, 1);
+                this.setState({
+                    shipsAlive: this.state.shipsAlive - 1
+                })
             }
         }
         for (let i = 0; i < objects.length; i++) {
@@ -278,9 +284,13 @@ export class Game extends React.Component {
         this.ships = [];
         this.blocks = [];
         this.bullets = [];
+
         this.setState({
-            score: 0
+            score: 0,
+            generation: this.state.generation + 1,
+            shipsAlive: this.population
         });
+
         this.gen = this.neuvol.nextGeneration();
 
         for (let i = 0; i < this.gen.length; i++) {
@@ -311,6 +321,8 @@ export class Game extends React.Component {
         return (
             <div>
                 <span className="score">Score: {this.state.score}</span>
+                <span className="generation">Generation: {this.state.generation}</span>
+                <span className="ships-alive">Ships Alive: {this.state.shipsAlive} / {this.population} </span>
                 <canvas ref="canvas"
                         width={this.state.screen.width * this.state.screen.ratio}
                         height={this.state.screen.width * this.state.screen.ratio}

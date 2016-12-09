@@ -7,3 +7,23 @@
     font-size: 18px;
     color: white;
 }
+
+.generation{
+    display: inline-block;
+    position: absolute;
+    top: 15px;
+    left: 340px;
+    z-index: 1;
+    font-size: 18px;
+    color: white;
+}
+
+.ships-alive{
+    display: inline-block;
+    position: absolute;
+    top: 40px;
+    left: 340px;
+    z-index: 1;
+    font-size: 18px;
+    color: white;
+}
