@@ -2,15 +2,12 @@ import React from 'react';
 import Ship from './Ship';
 import Block from './Block'
 import Neurovolution from './Neurovolution'
-
-const KEY = {
-    UP: 37,
-    DOWN: 39
-};
+import Boundary from "./Boundary";
 
 export class Engine extends React.Component {
     constructor() {
         super();
+
         this.state = {
             screen: {
                 width: 500,
@@ -27,33 +24,26 @@ export class Engine extends React.Component {
             generation: 0,
             shipsAlive: 0
         };
+
         this.population = 50;
         this.network = [3, [4], 2];
         this.ships = [];
         this.blocks = [];
-        this.bullets = [];
+        this.lowerBoundary = null;
+        this.upperBoundary = null;
+        this.boundaryHeight = 50;
         this.blockGenInterval = 25;
         this.blockGenCounter = 0;
         this.neuvol = null;
         this.gen = null;
     }
 
-    handleKeys(value, e) {
-        let keys = this.state.keys;
-        if (e.keyCode === KEY.UP) keys.up = value;
-        if (e.keyCode === KEY.DOWN) keys.down = value;
-        this.setState({
-            keys: keys
-        });
-    }
-
     componentDidMount() {
-        window.addEventListener('keyup', this.handleKeys.bind(this, false));
-        window.addEventListener('keydown', this.handleKeys.bind(this, true));
-
+        // Fetch canvas context
         const context = this.refs.canvas.getContext('2d');
         this.setState({context: context});
 
+        // Initialize neurovolution library
         this.neuvol = new Neurovolution({
             population: this.population,
             network: this.network
@@ -64,19 +54,21 @@ export class Engine extends React.Component {
         requestAnimationFrame(() => this.update());
     }
 
-    componentWillUnmount() {
-        window.removeEventListener('resize', this.handleKeys);
-        window.removeEventListener('resize', this.handleKeys);
-    }
-
     update() {
+        // If not ships alive, restart the game
         if (!this.ships.length) this.startGame();
-        const context = this.state.context;
 
+        // Update the current and max scores
         this.setState({
             score: this.state.score + 1
         });
 
+        if (this.state.score > this.state.maxScore)
+            this.setState({
+                maxScore: this.state.score
+            });
+
+        const context = this.state.context;
         context.save();
 
         // Render the background
@@ -95,6 +87,9 @@ export class Engine extends React.Component {
 
         // Check for collisions between the ships and incoming blocks
         this.checkCollisionWithBlocks(this.ships);
+
+        // Check if ships collided with a boundary
+        this.checkCollisionWithBoundaries(this.ships);
 
         // Remove objects that have been destroyed from their respective lists
         this.cleanUp();
@@ -121,6 +116,18 @@ export class Engine extends React.Component {
                     // block.destroy();
                 }
             }
+        }
+    }
+
+    checkCollisionWithBoundaries(objectList) {
+        if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null)
+            return;
+
+        // Check if object is not between the two boundaries
+        for (let object of objectList) {
+            if (object.position.y + object.size > this.lowerBoundary.edgePos ||
+                object.position.y - object.size < this.upperBoundary.edgePos)
+                object.destroy();
         }
     }
 
@@ -164,11 +171,8 @@ export class Engine extends React.Component {
     }
 
     renderObjects() {
-        let objects = [
-            this.blocks,
-            this.bullets
-        ];
 
+        // Render ships
         for (let i = 0; i < this.ships.length; i++) {
             let inputs = this.calculateFOV(this.ships[i]);
             let output = this.gen[i].compute(inputs);
@@ -179,17 +183,19 @@ export class Engine extends React.Component {
             this.ships[i].render(this.state, keys);
         }
 
+        // Render blocks
+        for (let block of this.blocks)
+            block.render(this.state);
 
-        for (let objectList of objects) {
-            for (let i = 0; i < objectList.length; i++)
-                objectList[i].render(this.state);
-        }
+        // Render boundaries
+        this.upperBoundary.render(this.state);
+        this.lowerBoundary.render(this.state);
     }
 
     cleanUp() {
         let objects = [
             this.blocks,
-            this.bullets
+            this.boundaries
         ];
         for (let i = 0; i < this.ships.length; i++) {
             if (this.ships[i].destroyed) {
@@ -200,11 +206,6 @@ export class Engine extends React.Component {
                 this.setState({
                     shipsAlive: this.state.shipsAlive - 1
                 });
-
-                if(this.state.score > this.state.maxScore)
-                    this.setState({
-                        maxScore: this.state.score
-                    })
             }
         }
         for (let i = 0; i < objects.length; i++) {
@@ -287,18 +288,22 @@ export class Engine extends React.Component {
     }
 
     startGame() {
+        // Reset all the arrays
         this.ships = [];
         this.blocks = [];
-        this.bullets = [];
+        this.boundaries = [];
 
+        // Reset our componenet's state
         this.setState({
             score: 0,
             generation: this.state.generation + 1,
             shipsAlive: this.population
         });
 
+        // Fetch next batch of networks
         this.gen = this.neuvol.nextGeneration();
 
+        // Create a ship for each network
         for (let i = 0; i < this.gen.length; i++) {
             let ship = new Ship({
                 position: {
@@ -309,6 +314,18 @@ export class Engine extends React.Component {
             this.ships.push(ship);
         }
 
+        // Create upper and lower boundaries of the game
+        this.upperBoundary = new Boundary({
+            height: this.boundaryHeight,
+            position: 'top'
+        });
+
+        this.lowerBoundary = new Boundary({
+            height: this.boundaryHeight,
+            position: 'bottom'
+        });
+
+
         let block = new Block({
             position: {
                 x: this.state.screen.width,
@@ -317,10 +334,6 @@ export class Engine extends React.Component {
             size: 15
         });
         this.blocks.push(block);
-    }
-
-    gameOver() {
-
     }
 
     render() {
