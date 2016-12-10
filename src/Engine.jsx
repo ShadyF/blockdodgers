@@ -8,7 +8,7 @@ const KEY = {
     DOWN: 39
 };
 
-export class Game extends React.Component {
+export class Engine extends React.Component {
     constructor() {
         super();
         this.state = {
@@ -135,7 +135,7 @@ export class Game extends React.Component {
             let newBlock = new Block({
                 position: {
                     x: this.state.screen.width,
-                    y: Game.getRandomInt(blockPadding + newBlockSize, lastBlock.position.y - lastBlock.size - blockPadding)
+                    y: Engine.getRandomInt(blockPadding + newBlockSize, lastBlock.position.y - lastBlock.size - blockPadding)
                 },
                 size: newBlockSize
             });
@@ -147,7 +147,7 @@ export class Game extends React.Component {
             let newBlock = new Block({
                 position: {
                     x: this.state.screen.width,
-                    y: Game.getRandomInt(lastBlock.position.y + lastBlock.size + blockPadding,
+                    y: Engine.getRandomInt(lastBlock.position.y + lastBlock.size + blockPadding,
                         this.state.screen.height - newBlockSize - blockPadding)
                 },
                 size: newBlockSize
