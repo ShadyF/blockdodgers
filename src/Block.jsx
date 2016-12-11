@@ -7,7 +7,8 @@ export default class Block {
             y: 0
         };
 
-        this.size = args.size;
+        this.width = args.width;
+        this.height = args.height;
         this.destroyed = false;
     }
 
@@ -18,16 +19,16 @@ export default class Block {
     render(state) {
         this.position.x += this.velocity.x;
 
-        if (this.position.x + this.size < 0) this.destroy();
+        if (this.position.x + this.width < 0) this.destroy();
 
         const context = state.context;
         context.save();
 
-        context.translate(this.position.x - this.size, this.position.y - this.size);
+        context.translate(this.position.x, this.position.y);
         context.strokeStyle = '#900600';
         context.fillStyle = '#000';
         context.lineWidth = 3;
-        context.strokeRect(0, 0, this.size * 2, this.size * 2);
+        context.strokeRect(0, 0, this.width, this.height);
 
         context.restore();
     }
