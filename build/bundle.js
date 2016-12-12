@@ -27486,7 +27486,7 @@
 	
 	
 	// module
-	exports.push([module.id, ".score{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.max-score{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.generation{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 340px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.ships-alive{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 340px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}", ""]);
+	exports.push([module.id, ".score{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.max-score{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.generation{\n    position: absolute;\n    top: 10px;\n    left: 200px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.ships-alive{\n    position: absolute;\n    top: 30px;\n    left: 200px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}", ""]);
 	
 	// exports
 

@@ -19,20 +19,18 @@
 }
 
 .generation{
-    display: inline-block;
     position: absolute;
     top: 10px;
-    left: 340px;
+    left: 200px;
     z-index: 1;
     font-size: 18px;
     color: white;
 }
 
 .ships-alive{
-    display: inline-block;
     position: absolute;
     top: 30px;
-    left: 340px;
+    left: 200px;
     z-index: 1;
     font-size: 18px;
     color: white;
