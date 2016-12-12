@@ -3,7 +3,7 @@ export default class Block {
         this.position = args.position;
 
         this.velocity = {
-            x: -2,
+            x: -4,
             y: 0
         };
 

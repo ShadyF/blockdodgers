@@ -3,6 +3,12 @@ export default class Boundary {
         this.height = args.height;
         this.position = args.position;
         this.edgePos = null;
+        if (this.position == 'top') {
+            this.edgePos = this.height;
+        }
+        else if (this.position == 'bottom') {
+            this.edgePos = 500 - this.height;
+        }
     }
 
     render(state) {
@@ -13,11 +19,11 @@ export default class Boundary {
         context.fillStyle = '#900600';
         context.lineWidth = 3;
 
-        if(this.position == 'top') {
+        if (this.position == 'top') {
             context.fillRect(0, 0, state.screen.width, this.height);
             this.edgePos = this.height;
         }
-        else if(this.position == 'bottom') {
+        else if (this.position == 'bottom') {
             context.fillRect(0, state.screen.height - this.height, state.screen.width, this.height);
             this.edgePos = state.screen.height - this.height;
         }

@@ -5,7 +5,7 @@ export default class Ship {
             x: 0,
             y: 0
         };
-        this.speed = 7;
+        this.speed = 10;
         this.size = 10;
         this.destroyed = false;
     }

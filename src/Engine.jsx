@@ -26,14 +26,14 @@ export class Engine extends React.Component {
         };
         this.rng = seedrandom(Math.random());
         this.population = 50;
-        this.network = [6, [10, 10, 4], 1];
+        this.network = [2, [4], 2];
         this.ships = [];
         this.blocks = [];
         this.lowerBoundary = null;
         this.upperBoundary = null;
         this.blockWidth = 20;
         this.boundaryHeight = 50;
-        this.blockGenInterval = 100;
+        this.blockGenInterval = 40;
         this.blockGenCounter = 0;
         this.neuvol = null;
         this.gen = null;
@@ -137,28 +137,36 @@ export class Engine extends React.Component {
         if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null)
             return;
 
-        let spawnSpace = this.state.screen.height - this.boundaryHeight * 2;
-        let minBlockHeight = 250;
-        let maxBlockHeight = spawnSpace - 80;
-        let blockHeight = this.getRandomInt(minBlockHeight, maxBlockHeight);
-        let spawnPoint = this.getRandomInt(this.upperBoundary.edgePos, this.lowerBoundary.edgePos - blockHeight);
+        let holeSize = 50;
+        let startY = this.boundaryHeight + 30 + holeSize;
+        let endY = this.state.screen.height - this.boundaryHeight - 30;
+        let lowerBlockY = this.getRandomInt(startY, endY);
 
-        let block = new Block({
+        let lowerBlock = new Block({
             position: {
                 x: this.state.screen.width,
-                y: spawnPoint
+                y: lowerBlockY
             },
             width: this.blockWidth,
-            height: blockHeight
+            height: this.lowerBoundary.edgePos - lowerBlockY
         });
 
-        this.blocks.push(block);
+        let upperBlock = new Block({
+            position: {
+                x: this.state.screen.width,
+                y: this.upperBoundary.edgePos
+            },
+            width: this.blockWidth,
+            height: lowerBlockY - holeSize - this.upperBoundary.edgePos
+        });
+
+        this.blocks.push(lowerBlock, upperBlock);
     }
 
     getRandomInt(min, max) {
         min = Math.ceil(min);
         max = Math.floor(max);
-        return Math.floor(this.myrng() * (max - min)) + min;
+        return Math.floor(Math.random() * (max - min)) + min;
     }
 
     renderObjects() {
@@ -168,7 +176,7 @@ export class Engine extends React.Component {
             let output = this.gen[i].compute(inputs);
             let keys = {
                 up: output[0] > 0.5,
-                down: output[0] <= 0.5
+                down: output[1] > 0.5
             };
             this.ships[i].render(this.state, keys);
         }
@@ -207,8 +215,8 @@ export class Engine extends React.Component {
 
     calculateFOV(ship){
         if(this.blocks.length == 0)
-            return [ship.position.y - ship.size, -1, -1, -1];
-        let nextBlock = ship.position.x - ship.size > this.blocks[0].position.x + this.blocks[0].width ? this.blocks[1] : this.blocks[0];
+            return [ship.position.y - ship.size, -1, -1];
+        let nextBlock = ship.position.x - ship.size > this.blocks[0].position.x + this.blocks[0].width ? this.blocks[2] : this.blocks[0];
         if (!nextBlock)
             return;
         // const ctx = this.state.context;
@@ -216,8 +224,7 @@ export class Engine extends React.Component {
         // ctx.fillStyle = 'green';
         // ctx.fillRect(ship.position.x, ship.position.y - ship.size, 10, 10); // fill in the pixel at (10,10)
         // ctx.restore();
-        return [ship.position.y - ship.size, nextBlock.position.x, nextBlock.position.y, nextBlock.height,
-            nextBlock.position.y - this.upperBoundary.edgePos > 30, this.lowerBoundary.edgePos - (nextBlock.position.y + nextBlock.height)  > 30]
+        return [ship.position.y, nextBlock.position.y]
     }
 
     startGame() {
