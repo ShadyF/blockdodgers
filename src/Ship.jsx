@@ -5,9 +5,8 @@ export default class Ship {
             x: 0,
             y: 0
         };
-        this.speed = 5;
-        this.inertia = 0.99;
-        this.size = 20;
+        this.speed = 7;
+        this.size = 10;
         this.destroyed = false;
     }
 
@@ -23,7 +22,6 @@ export default class Ship {
             this.velocity.y += this.speed;
 
         this.position.y += this.velocity.y;
-        this.velocity.y *= this.inertia;
 
         // Screen edges handling
         if (this.position.y > state.screen.height) {

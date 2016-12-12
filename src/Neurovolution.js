@@ -2,7 +2,7 @@ var Neuroevolution = function (options) {
     var self = this;
     self.options = {
         activation: function (a) {
-            var ap = (-a) / 1;
+            var ap = -a;
             return (1 / (1 + Math.exp(ap)))
         },
         randomClamped: function () {

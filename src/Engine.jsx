@@ -3,7 +3,7 @@ import Ship from './Ship';
 import Block from './Block'
 import Neurovolution from './Neurovolution'
 import Boundary from "./Boundary";
-
+import seedrandom from 'seedrandom';
 export class Engine extends React.Component {
     constructor() {
         super();
@@ -24,18 +24,20 @@ export class Engine extends React.Component {
             generation: 0,
             shipsAlive: 0
         };
-
+        this.rng = seedrandom(Math.random());
         this.population = 50;
-        this.network = [3, [4], 2];
+        this.network = [6, [10, 10, 4], 1];
         this.ships = [];
         this.blocks = [];
         this.lowerBoundary = null;
         this.upperBoundary = null;
+        this.blockWidth = 20;
         this.boundaryHeight = 50;
-        this.blockGenInterval = 25;
+        this.blockGenInterval = 100;
         this.blockGenCounter = 0;
         this.neuvol = null;
         this.gen = null;
+        this.myrng = null;
     }
 
     componentDidMount() {
@@ -46,7 +48,9 @@ export class Engine extends React.Component {
         // Initialize neurovolution library
         this.neuvol = new Neurovolution({
             population: this.population,
-            network: this.network
+            network: this.network,
+            nbChild: 8,
+            mutationRate: 0.2,
         });
 
         this.startGame();
@@ -105,16 +109,14 @@ export class Engine extends React.Component {
     checkCollisionWithBlocks(objectList) {
         for (let object of objectList) {
             for (let block of this.blocks) {
-                let vx = object.position.x - block.position.x;
-                let vy = object.position.y - block.position.y;
+                let objectX = object.position.x - object.size + 10;
+                let objectY = object.position.y - object.size;
 
-                // Given that the position coordinates of both objects is their middle point
-                // Destroy both objects if distance between them < the addition of the radii
-                let length = Math.sqrt(vx * vx + vy * vy);
-                if (length < object.size + block.size) {
+                // Check for collision between two rectangles
+                // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+                if (objectX < block.position.x + block.width && objectX + object.size * 2 > block.position.x &&
+                    objectY < block.position.y + block.height && objectY + object.size * 2 > block.position.y)
                     object.destroy();
-                    // block.destroy();
-                }
             }
         }
     }
@@ -132,53 +134,41 @@ export class Engine extends React.Component {
     }
 
     generateBlock() {
-        let lastBlock = this.blocks[this.blocks.length - 1];
+        if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null)
+            return;
 
-        let newBlockSize = 15;
-        let blockPadding = 15;
+        let spawnSpace = this.state.screen.height - this.boundaryHeight * 2;
+        let minBlockHeight = 250;
+        let maxBlockHeight = spawnSpace - 80;
+        let blockHeight = this.getRandomInt(minBlockHeight, maxBlockHeight);
+        let spawnPoint = this.getRandomInt(this.upperBoundary.edgePos, this.lowerBoundary.edgePos - blockHeight);
 
-        // Generate block above
-        if (lastBlock.position.y - lastBlock.size > (newBlockSize * 2) + (blockPadding * 2)) {
-            let newBlock = new Block({
-                position: {
-                    x: this.state.screen.width,
-                    y: Engine.getRandomInt(blockPadding + newBlockSize, lastBlock.position.y - lastBlock.size - blockPadding)
-                },
-                size: newBlockSize
-            });
-            this.blocks.push(newBlock);
-        }
+        let block = new Block({
+            position: {
+                x: this.state.screen.width,
+                y: spawnPoint
+            },
+            width: this.blockWidth,
+            height: blockHeight
+        });
 
-        // Generate block below
-        if (lastBlock.position.y + lastBlock.size < this.state.screen.height - (newBlockSize * 2 + blockPadding * 2)) {
-            let newBlock = new Block({
-                position: {
-                    x: this.state.screen.width,
-                    y: Engine.getRandomInt(lastBlock.position.y + lastBlock.size + blockPadding,
-                        this.state.screen.height - newBlockSize - blockPadding)
-                },
-                size: newBlockSize
-            });
-            this.blocks.push(newBlock);
-        }
-
+        this.blocks.push(block);
     }
 
-    static getRandomInt(min, max) {
+    getRandomInt(min, max) {
         min = Math.ceil(min);
         max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min)) + min;
+        return Math.floor(this.myrng() * (max - min)) + min;
     }
 
     renderObjects() {
-
         // Render ships
         for (let i = 0; i < this.ships.length; i++) {
             let inputs = this.calculateFOV(this.ships[i]);
             let output = this.gen[i].compute(inputs);
             let keys = {
                 up: output[0] > 0.5,
-                down: output[1] > 0.5
+                down: output[0] <= 0.5
             };
             this.ships[i].render(this.state, keys);
         }
@@ -215,76 +205,19 @@ export class Engine extends React.Component {
         }
     }
 
-    calculateFOV(ship) {
-        // FOV
-        // * *
-        // > *
-        // * *
-        let fovRange = 40;
-        let rayWidth = 40;
-        let blocks = [this.blocks[0], this.blocks[1], this.blocks[2], this.blocks[3], this.blocks[4], this.blocks[5]];
-
-        let topQuad = false;
-        let topRightQuad = false;
-        let frontQuad = false;
-        let bottomRightQuad = false;
-        let bottomQuad = false;
-
-        // Check top quad
-        for (let block of blocks) {
-            if (!block)
-                break;
-
-            let upperRay = ship.position.y - ship.size - fovRange;
-
-            let blockDetected = (block.position.y + block.size) > upperRay &&
-                (block.position.y + block.size) < ship.position.y - ship.size &&
-                (block.position.x - block.size) < ship.position.x + ship.size + rayWidth &&
-                (block.position.x + block.size) > ship.position.x - ship.size;
-
-            if (blockDetected || upperRay < 0) {
-                topQuad = true;
-                break;
-            }
-        }
-
-        // Check in front
-        for (let block of blocks) {
-            if (!block)
-                break;
-
-            let frontRay = ship.position.x + ship.size + fovRange;
-
-            let blockDetected = ((block.position.x - block.size) < frontRay) &&
-                (block.position.y - block.size) < ship.position.y + ship.size &&
-                (block.position.y + block.size) > ship.position.y - ship.size;
-
-            if (blockDetected) {
-                frontQuad = true;
-                break;
-            }
-
-        }
-
-        // Check for lower quad
-        for (let block of blocks) {
-            if (!block)
-                break;
-
-            let lowerRay = ship.position.y + ship.size + fovRange;
-
-            let blockDetected = (block.position.y - block.size) < lowerRay &&
-                (block.position.y - block.size) > ship.position.y + ship.size &&
-                (block.position.x - block.size) < ship.position.x + ship.size + rayWidth &&
-                (block.position.x + block.size) > ship.position.x - ship.size;
-
-            if (blockDetected || lowerRay > this.state.screen.height) {
-                bottomQuad = true;
-                break;
-            }
-        }
-
-        return [topQuad, frontQuad, bottomQuad];
+    calculateFOV(ship){
+        if(this.blocks.length == 0)
+            return [ship.position.y - ship.size, -1, -1, -1];
+        let nextBlock = ship.position.x - ship.size > this.blocks[0].position.x + this.blocks[0].width ? this.blocks[1] : this.blocks[0];
+        if (!nextBlock)
+            return;
+        // const ctx = this.state.context;
+        // ctx.save();
+        // ctx.fillStyle = 'green';
+        // ctx.fillRect(ship.position.x, ship.position.y - ship.size, 10, 10); // fill in the pixel at (10,10)
+        // ctx.restore();
+        return [ship.position.y - ship.size, nextBlock.position.x, nextBlock.position.y, nextBlock.height,
+            nextBlock.position.y - this.upperBoundary.edgePos > 30, this.lowerBoundary.edgePos - (nextBlock.position.y + nextBlock.height)  > 30]
     }
 
     startGame() {
@@ -292,7 +225,8 @@ export class Engine extends React.Component {
         this.ships = [];
         this.blocks = [];
         this.boundaries = [];
-
+        this.blockGenCounter = 0;
+        this.myrng = seedrandom(this.rng);
         // Reset our componenet's state
         this.setState({
             score: 0,
@@ -302,17 +236,6 @@ export class Engine extends React.Component {
 
         // Fetch next batch of networks
         this.gen = this.neuvol.nextGeneration();
-
-        // Create a ship for each network
-        for (let i = 0; i < this.gen.length; i++) {
-            let ship = new Ship({
-                position: {
-                    x: 40,
-                    y: this.state.screen.height / 2
-                }
-            });
-            this.ships.push(ship);
-        }
 
         // Create upper and lower boundaries of the game
         this.upperBoundary = new Boundary({
@@ -325,15 +248,19 @@ export class Engine extends React.Component {
             position: 'bottom'
         });
 
+        this.generateBlock();
 
-        let block = new Block({
-            position: {
-                x: this.state.screen.width,
-                y: 200
-            },
-            size: 15
-        });
-        this.blocks.push(block);
+        // Create a ship for each network
+        for (let i = 0; i < this.gen.length; i++) {
+            let ship = new Ship({
+                position: {
+                    x: 40,
+                    y: this.state.screen.height / 2
+                }
+            });
+            this.ships.push(ship);
+        }
+
     }
 
     render() {
