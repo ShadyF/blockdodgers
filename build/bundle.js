@@ -61,9 +61,9 @@
 	
 	var _reactDom2 = _interopRequireDefault(_reactDom);
 	
-	var _Engine = __webpack_require__(187);
+	var _Engine = __webpack_require__(179);
 	
-	__webpack_require__(183);
+	__webpack_require__(217);
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
@@ -21477,7 +21477,446 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)))
 
 /***/ },
-/* 179 */,
+/* 179 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+	    value: true
+	});
+	exports.Engine = undefined;
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _react = __webpack_require__(2);
+	
+	var _react2 = _interopRequireDefault(_react);
+	
+	var _Ship = __webpack_require__(180);
+	
+	var _Ship2 = _interopRequireDefault(_Ship);
+	
+	var _Block = __webpack_require__(181);
+	
+	var _Block2 = _interopRequireDefault(_Block);
+	
+	var _Neurovolution = __webpack_require__(182);
+	
+	var _Neurovolution2 = _interopRequireDefault(_Neurovolution);
+	
+	var _Boundary = __webpack_require__(183);
+	
+	var _Boundary2 = _interopRequireDefault(_Boundary);
+	
+	var _seedrandom = __webpack_require__(184);
+	
+	var _seedrandom2 = _interopRequireDefault(_seedrandom);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+	
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	
+	var Engine = exports.Engine = function (_React$Component) {
+	    _inherits(Engine, _React$Component);
+	
+	    function Engine() {
+	        _classCallCheck(this, Engine);
+	
+	        var _this = _possibleConstructorReturn(this, (Engine.__proto__ || Object.getPrototypeOf(Engine)).call(this));
+	
+	        _this.state = {
+	            screen: {
+	                width: 500,
+	                height: 500,
+	                ratio: window.devicePixelRatio || 1
+	            },
+	            context: null,
+	            keys: {
+	                up: 0,
+	                down: 0
+	            },
+	            score: 0,
+	            maxScore: 0,
+	            generation: 0,
+	            shipsAlive: 0
+	        };
+	        _this.rng = (0, _seedrandom2.default)(Math.random());
+	        _this.population = 50;
+	        _this.network = [6, [10, 10, 4], 1];
+	        _this.ships = [];
+	        _this.blocks = [];
+	        _this.lowerBoundary = null;
+	        _this.upperBoundary = null;
+	        _this.blockWidth = 20;
+	        _this.boundaryHeight = 50;
+	        _this.blockGenInterval = 100;
+	        _this.blockGenCounter = 0;
+	        _this.neuvol = null;
+	        _this.gen = null;
+	        _this.myrng = null;
+	        return _this;
+	    }
+	
+	    _createClass(Engine, [{
+	        key: 'componentDidMount',
+	        value: function componentDidMount() {
+	            var _this2 = this;
+	
+	            // Fetch canvas context
+	            var context = this.refs.canvas.getContext('2d');
+	            this.setState({ context: context });
+	
+	            // Initialize neurovolution library
+	            this.neuvol = new _Neurovolution2.default({
+	                population: this.population,
+	                network: this.network,
+	                nbChild: 8,
+	                mutationRate: 0.2
+	            });
+	
+	            this.startGame();
+	
+	            requestAnimationFrame(function () {
+	                return _this2.update();
+	            });
+	        }
+	    }, {
+	        key: 'update',
+	        value: function update() {
+	            var _this3 = this;
+	
+	            // If not ships alive, restart the game
+	            if (!this.ships.length) this.startGame();
+	
+	            // Update the current and max scores
+	            this.setState({
+	                score: this.state.score + 1
+	            });
+	
+	            if (this.state.score > this.state.maxScore) this.setState({
+	                maxScore: this.state.score
+	            });
+	
+	            var context = this.state.context;
+	            context.save();
+	
+	            // Render the background
+	            // Setting globalAlpha to 0.4 gives a motion trail effect
+	            context.fillStyle = '#000';
+	            context.globalAlpha = 0.4;
+	            context.fillRect(0, 0, this.state.screen.width, this.state.screen.height);
+	            context.globalAlpha = 1;
+	
+	            this.blockGenCounter += 1;
+	
+	            if (this.blockGenCounter === this.blockGenInterval) {
+	                this.blockGenCounter = 0;
+	                this.generateBlock();
+	            }
+	
+	            // Check for collisions between the ships and incoming blocks
+	            this.checkCollisionWithBlocks(this.ships);
+	
+	            // Check if ships collided with a boundary
+	            this.checkCollisionWithBoundaries(this.ships);
+	
+	            // Remove objects that have been destroyed from their respective lists
+	            this.cleanUp();
+	
+	            // Render all objects to the canvas
+	            this.renderObjects();
+	
+	            context.restore();
+	
+	            requestAnimationFrame(function () {
+	                return _this3.update();
+	            });
+	        }
+	    }, {
+	        key: 'checkCollisionWithBlocks',
+	        value: function checkCollisionWithBlocks(objectList) {
+	            var _iteratorNormalCompletion = true;
+	            var _didIteratorError = false;
+	            var _iteratorError = undefined;
+	
+	            try {
+	                for (var _iterator = objectList[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+	                    var object = _step.value;
+	                    var _iteratorNormalCompletion2 = true;
+	                    var _didIteratorError2 = false;
+	                    var _iteratorError2 = undefined;
+	
+	                    try {
+	                        for (var _iterator2 = this.blocks[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+	                            var block = _step2.value;
+	
+	                            var objectX = object.position.x - object.size + 10;
+	                            var objectY = object.position.y - object.size;
+	
+	                            // Check for collision between two rectangles
+	                            // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+	                            if (objectX < block.position.x + block.width && objectX + object.size * 2 > block.position.x && objectY < block.position.y + block.height && objectY + object.size * 2 > block.position.y) object.destroy();
+	                        }
+	                    } catch (err) {
+	                        _didIteratorError2 = true;
+	                        _iteratorError2 = err;
+	                    } finally {
+	                        try {
+	                            if (!_iteratorNormalCompletion2 && _iterator2.return) {
+	                                _iterator2.return();
+	                            }
+	                        } finally {
+	                            if (_didIteratorError2) {
+	                                throw _iteratorError2;
+	                            }
+	                        }
+	                    }
+	                }
+	            } catch (err) {
+	                _didIteratorError = true;
+	                _iteratorError = err;
+	            } finally {
+	                try {
+	                    if (!_iteratorNormalCompletion && _iterator.return) {
+	                        _iterator.return();
+	                    }
+	                } finally {
+	                    if (_didIteratorError) {
+	                        throw _iteratorError;
+	                    }
+	                }
+	            }
+	        }
+	    }, {
+	        key: 'checkCollisionWithBoundaries',
+	        value: function checkCollisionWithBoundaries(objectList) {
+	            if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null) return;
+	
+	            // Check if object is not between the two boundaries
+	            var _iteratorNormalCompletion3 = true;
+	            var _didIteratorError3 = false;
+	            var _iteratorError3 = undefined;
+	
+	            try {
+	                for (var _iterator3 = objectList[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+	                    var object = _step3.value;
+	
+	                    if (object.position.y + object.size > this.lowerBoundary.edgePos || object.position.y - object.size < this.upperBoundary.edgePos) object.destroy();
+	                }
+	            } catch (err) {
+	                _didIteratorError3 = true;
+	                _iteratorError3 = err;
+	            } finally {
+	                try {
+	                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
+	                        _iterator3.return();
+	                    }
+	                } finally {
+	                    if (_didIteratorError3) {
+	                        throw _iteratorError3;
+	                    }
+	                }
+	            }
+	        }
+	    }, {
+	        key: 'generateBlock',
+	        value: function generateBlock() {
+	            if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null) return;
+	
+	            var spawnSpace = this.state.screen.height - this.boundaryHeight * 2;
+	            var minBlockHeight = 250;
+	            var maxBlockHeight = spawnSpace - 80;
+	            var blockHeight = this.getRandomInt(minBlockHeight, maxBlockHeight);
+	            var spawnPoint = this.getRandomInt(this.upperBoundary.edgePos, this.lowerBoundary.edgePos - blockHeight);
+	
+	            var block = new _Block2.default({
+	                position: {
+	                    x: this.state.screen.width,
+	                    y: spawnPoint
+	                },
+	                width: this.blockWidth,
+	                height: blockHeight
+	            });
+	
+	            this.blocks.push(block);
+	        }
+	    }, {
+	        key: 'getRandomInt',
+	        value: function getRandomInt(min, max) {
+	            min = Math.ceil(min);
+	            max = Math.floor(max);
+	            return Math.floor(this.myrng() * (max - min)) + min;
+	        }
+	    }, {
+	        key: 'renderObjects',
+	        value: function renderObjects() {
+	            // Render ships
+	            for (var i = 0; i < this.ships.length; i++) {
+	                var inputs = this.calculateFOV(this.ships[i]);
+	                var output = this.gen[i].compute(inputs);
+	                var keys = {
+	                    up: output[0] > 0.5,
+	                    down: output[0] <= 0.5
+	                };
+	                this.ships[i].render(this.state, keys);
+	            }
+	
+	            // Render blocks
+	            var _iteratorNormalCompletion4 = true;
+	            var _didIteratorError4 = false;
+	            var _iteratorError4 = undefined;
+	
+	            try {
+	                for (var _iterator4 = this.blocks[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+	                    var block = _step4.value;
+	
+	                    block.render(this.state);
+	                } // Render boundaries
+	            } catch (err) {
+	                _didIteratorError4 = true;
+	                _iteratorError4 = err;
+	            } finally {
+	                try {
+	                    if (!_iteratorNormalCompletion4 && _iterator4.return) {
+	                        _iterator4.return();
+	                    }
+	                } finally {
+	                    if (_didIteratorError4) {
+	                        throw _iteratorError4;
+	                    }
+	                }
+	            }
+	
+	            this.upperBoundary.render(this.state);
+	            this.lowerBoundary.render(this.state);
+	        }
+	    }, {
+	        key: 'cleanUp',
+	        value: function cleanUp() {
+	            var objects = [this.blocks, this.boundaries];
+	            for (var i = 0; i < this.ships.length; i++) {
+	                if (this.ships[i].destroyed) {
+	                    this.neuvol.networkScore(this.gen[i], this.state.score);
+	                    this.ships.splice(i, 1);
+	                    this.gen.splice(i, 1);
+	
+	                    this.setState({
+	                        shipsAlive: this.state.shipsAlive - 1
+	                    });
+	                }
+	            }
+	            for (var _i = 0; _i < objects.length; _i++) {
+	                for (var j = 0; j < objects[_i].length; j++) {
+	                    if (objects[_i][j].destroyed) objects[_i].splice(j, 1);
+	                }
+	            }
+	        }
+	    }, {
+	        key: 'calculateFOV',
+	        value: function calculateFOV(ship) {
+	            if (this.blocks.length == 0) return [ship.position.y - ship.size, -1, -1, -1];
+	            var nextBlock = ship.position.x - ship.size > this.blocks[0].position.x + this.blocks[0].width ? this.blocks[1] : this.blocks[0];
+	            if (!nextBlock) return;
+	            // const ctx = this.state.context;
+	            // ctx.save();
+	            // ctx.fillStyle = 'green';
+	            // ctx.fillRect(ship.position.x, ship.position.y - ship.size, 10, 10); // fill in the pixel at (10,10)
+	            // ctx.restore();
+	            return [ship.position.y - ship.size, nextBlock.position.x, nextBlock.position.y, nextBlock.height, nextBlock.position.y - this.upperBoundary.edgePos > 30, this.lowerBoundary.edgePos - (nextBlock.position.y + nextBlock.height) > 30];
+	        }
+	    }, {
+	        key: 'startGame',
+	        value: function startGame() {
+	            // Reset all the arrays
+	            this.ships = [];
+	            this.blocks = [];
+	            this.boundaries = [];
+	            this.blockGenCounter = 0;
+	            this.myrng = (0, _seedrandom2.default)(this.rng);
+	            // Reset our componenet's state
+	            this.setState({
+	                score: 0,
+	                generation: this.state.generation + 1,
+	                shipsAlive: this.population
+	            });
+	
+	            // Fetch next batch of networks
+	            this.gen = this.neuvol.nextGeneration();
+	
+	            // Create upper and lower boundaries of the game
+	            this.upperBoundary = new _Boundary2.default({
+	                height: this.boundaryHeight,
+	                position: 'top'
+	            });
+	
+	            this.lowerBoundary = new _Boundary2.default({
+	                height: this.boundaryHeight,
+	                position: 'bottom'
+	            });
+	
+	            this.generateBlock();
+	
+	            // Create a ship for each network
+	            for (var i = 0; i < this.gen.length; i++) {
+	                var ship = new _Ship2.default({
+	                    position: {
+	                        x: 40,
+	                        y: this.state.screen.height / 2
+	                    }
+	                });
+	                this.ships.push(ship);
+	            }
+	        }
+	    }, {
+	        key: 'render',
+	        value: function render() {
+	            return _react2.default.createElement(
+	                'div',
+	                null,
+	                _react2.default.createElement(
+	                    'span',
+	                    { className: 'score' },
+	                    'Score: ',
+	                    this.state.score
+	                ),
+	                _react2.default.createElement(
+	                    'span',
+	                    { className: 'max-score' },
+	                    'Max Score: ',
+	                    this.state.maxScore
+	                ),
+	                _react2.default.createElement(
+	                    'span',
+	                    { className: 'generation' },
+	                    'Generation: ',
+	                    this.state.generation
+	                ),
+	                _react2.default.createElement(
+	                    'span',
+	                    { className: 'ships-alive' },
+	                    'Ships Alive: ',
+	                    this.state.shipsAlive,
+	                    ' / ',
+	                    this.population,
+	                    ' '
+	                ),
+	                _react2.default.createElement('canvas', { ref: 'canvas',
+	                    width: this.state.screen.width * this.state.screen.ratio,
+	                    height: this.state.screen.width * this.state.screen.ratio
+	                })
+	            );
+	        }
+	    }]);
+	
+	    return Engine;
+	}(_react2.default.Component);
+
+/***/ },
 /* 180 */
 /***/ function(module, exports) {
 
@@ -21930,794 +22369,6 @@
 
 /***/ },
 /* 183 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-	
-	// load the styles
-	var content = __webpack_require__(184);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(186)(content, {});
-	if(content.locals) module.exports = content.locals;
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		if(!content.locals) {
-			module.hot.accept("!!./../node_modules/css-loader/index.js!./style.css", function() {
-				var newContent = require("!!./../node_modules/css-loader/index.js!./style.css");
-				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-				update(newContent);
-			});
-		}
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 184 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(185)();
-	// imports
-	
-	
-	// module
-	exports.push([module.id, ".score{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.max-score{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.generation{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 340px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.ships-alive{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 340px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}", ""]);
-	
-	// exports
-
-
-/***/ },
-/* 185 */
-/***/ function(module, exports) {
-
-	/*
-		MIT License http://www.opensource.org/licenses/mit-license.php
-		Author Tobias Koppers @sokra
-	*/
-	// css base code, injected by the css-loader
-	module.exports = function() {
-		var list = [];
-	
-		// return the list of modules as css string
-		list.toString = function toString() {
-			var result = [];
-			for(var i = 0; i < this.length; i++) {
-				var item = this[i];
-				if(item[2]) {
-					result.push("@media " + item[2] + "{" + item[1] + "}");
-				} else {
-					result.push(item[1]);
-				}
-			}
-			return result.join("");
-		};
-	
-		// import a list of modules into the list
-		list.i = function(modules, mediaQuery) {
-			if(typeof modules === "string")
-				modules = [[null, modules, ""]];
-			var alreadyImportedModules = {};
-			for(var i = 0; i < this.length; i++) {
-				var id = this[i][0];
-				if(typeof id === "number")
-					alreadyImportedModules[id] = true;
-			}
-			for(i = 0; i < modules.length; i++) {
-				var item = modules[i];
-				// skip already imported module
-				// this implementation is not 100% perfect for weird media query combinations
-				//  when a module is imported multiple times with different media queries.
-				//  I hope this will never occur (Hey this way we have smaller bundles)
-				if(typeof item[0] !== "number" || !alreadyImportedModules[item[0]]) {
-					if(mediaQuery && !item[2]) {
-						item[2] = mediaQuery;
-					} else if(mediaQuery) {
-						item[2] = "(" + item[2] + ") and (" + mediaQuery + ")";
-					}
-					list.push(item);
-				}
-			}
-		};
-		return list;
-	};
-
-
-/***/ },
-/* 186 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/*
-		MIT License http://www.opensource.org/licenses/mit-license.php
-		Author Tobias Koppers @sokra
-	*/
-	var stylesInDom = {},
-		memoize = function(fn) {
-			var memo;
-			return function () {
-				if (typeof memo === "undefined") memo = fn.apply(this, arguments);
-				return memo;
-			};
-		},
-		isOldIE = memoize(function() {
-			return /msie [6-9]\b/.test(window.navigator.userAgent.toLowerCase());
-		}),
-		getHeadElement = memoize(function () {
-			return document.head || document.getElementsByTagName("head")[0];
-		}),
-		singletonElement = null,
-		singletonCounter = 0,
-		styleElementsInsertedAtTop = [];
-	
-	module.exports = function(list, options) {
-		if(false) {
-			if(typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
-		}
-	
-		options = options || {};
-		// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
-		// tags it will allow on a page
-		if (typeof options.singleton === "undefined") options.singleton = isOldIE();
-	
-		// By default, add <style> tags to the bottom of <head>.
-		if (typeof options.insertAt === "undefined") options.insertAt = "bottom";
-	
-		var styles = listToStyles(list);
-		addStylesToDom(styles, options);
-	
-		return function update(newList) {
-			var mayRemove = [];
-			for(var i = 0; i < styles.length; i++) {
-				var item = styles[i];
-				var domStyle = stylesInDom[item.id];
-				domStyle.refs--;
-				mayRemove.push(domStyle);
-			}
-			if(newList) {
-				var newStyles = listToStyles(newList);
-				addStylesToDom(newStyles, options);
-			}
-			for(var i = 0; i < mayRemove.length; i++) {
-				var domStyle = mayRemove[i];
-				if(domStyle.refs === 0) {
-					for(var j = 0; j < domStyle.parts.length; j++)
-						domStyle.parts[j]();
-					delete stylesInDom[domStyle.id];
-				}
-			}
-		};
-	}
-	
-	function addStylesToDom(styles, options) {
-		for(var i = 0; i < styles.length; i++) {
-			var item = styles[i];
-			var domStyle = stylesInDom[item.id];
-			if(domStyle) {
-				domStyle.refs++;
-				for(var j = 0; j < domStyle.parts.length; j++) {
-					domStyle.parts[j](item.parts[j]);
-				}
-				for(; j < item.parts.length; j++) {
-					domStyle.parts.push(addStyle(item.parts[j], options));
-				}
-			} else {
-				var parts = [];
-				for(var j = 0; j < item.parts.length; j++) {
-					parts.push(addStyle(item.parts[j], options));
-				}
-				stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
-			}
-		}
-	}
-	
-	function listToStyles(list) {
-		var styles = [];
-		var newStyles = {};
-		for(var i = 0; i < list.length; i++) {
-			var item = list[i];
-			var id = item[0];
-			var css = item[1];
-			var media = item[2];
-			var sourceMap = item[3];
-			var part = {css: css, media: media, sourceMap: sourceMap};
-			if(!newStyles[id])
-				styles.push(newStyles[id] = {id: id, parts: [part]});
-			else
-				newStyles[id].parts.push(part);
-		}
-		return styles;
-	}
-	
-	function insertStyleElement(options, styleElement) {
-		var head = getHeadElement();
-		var lastStyleElementInsertedAtTop = styleElementsInsertedAtTop[styleElementsInsertedAtTop.length - 1];
-		if (options.insertAt === "top") {
-			if(!lastStyleElementInsertedAtTop) {
-				head.insertBefore(styleElement, head.firstChild);
-			} else if(lastStyleElementInsertedAtTop.nextSibling) {
-				head.insertBefore(styleElement, lastStyleElementInsertedAtTop.nextSibling);
-			} else {
-				head.appendChild(styleElement);
-			}
-			styleElementsInsertedAtTop.push(styleElement);
-		} else if (options.insertAt === "bottom") {
-			head.appendChild(styleElement);
-		} else {
-			throw new Error("Invalid value for parameter 'insertAt'. Must be 'top' or 'bottom'.");
-		}
-	}
-	
-	function removeStyleElement(styleElement) {
-		styleElement.parentNode.removeChild(styleElement);
-		var idx = styleElementsInsertedAtTop.indexOf(styleElement);
-		if(idx >= 0) {
-			styleElementsInsertedAtTop.splice(idx, 1);
-		}
-	}
-	
-	function createStyleElement(options) {
-		var styleElement = document.createElement("style");
-		styleElement.type = "text/css";
-		insertStyleElement(options, styleElement);
-		return styleElement;
-	}
-	
-	function createLinkElement(options) {
-		var linkElement = document.createElement("link");
-		linkElement.rel = "stylesheet";
-		insertStyleElement(options, linkElement);
-		return linkElement;
-	}
-	
-	function addStyle(obj, options) {
-		var styleElement, update, remove;
-	
-		if (options.singleton) {
-			var styleIndex = singletonCounter++;
-			styleElement = singletonElement || (singletonElement = createStyleElement(options));
-			update = applyToSingletonTag.bind(null, styleElement, styleIndex, false);
-			remove = applyToSingletonTag.bind(null, styleElement, styleIndex, true);
-		} else if(obj.sourceMap &&
-			typeof URL === "function" &&
-			typeof URL.createObjectURL === "function" &&
-			typeof URL.revokeObjectURL === "function" &&
-			typeof Blob === "function" &&
-			typeof btoa === "function") {
-			styleElement = createLinkElement(options);
-			update = updateLink.bind(null, styleElement);
-			remove = function() {
-				removeStyleElement(styleElement);
-				if(styleElement.href)
-					URL.revokeObjectURL(styleElement.href);
-			};
-		} else {
-			styleElement = createStyleElement(options);
-			update = applyToTag.bind(null, styleElement);
-			remove = function() {
-				removeStyleElement(styleElement);
-			};
-		}
-	
-		update(obj);
-	
-		return function updateStyle(newObj) {
-			if(newObj) {
-				if(newObj.css === obj.css && newObj.media === obj.media && newObj.sourceMap === obj.sourceMap)
-					return;
-				update(obj = newObj);
-			} else {
-				remove();
-			}
-		};
-	}
-	
-	var replaceText = (function () {
-		var textStore = [];
-	
-		return function (index, replacement) {
-			textStore[index] = replacement;
-			return textStore.filter(Boolean).join('\n');
-		};
-	})();
-	
-	function applyToSingletonTag(styleElement, index, remove, obj) {
-		var css = remove ? "" : obj.css;
-	
-		if (styleElement.styleSheet) {
-			styleElement.styleSheet.cssText = replaceText(index, css);
-		} else {
-			var cssNode = document.createTextNode(css);
-			var childNodes = styleElement.childNodes;
-			if (childNodes[index]) styleElement.removeChild(childNodes[index]);
-			if (childNodes.length) {
-				styleElement.insertBefore(cssNode, childNodes[index]);
-			} else {
-				styleElement.appendChild(cssNode);
-			}
-		}
-	}
-	
-	function applyToTag(styleElement, obj) {
-		var css = obj.css;
-		var media = obj.media;
-	
-		if(media) {
-			styleElement.setAttribute("media", media)
-		}
-	
-		if(styleElement.styleSheet) {
-			styleElement.styleSheet.cssText = css;
-		} else {
-			while(styleElement.firstChild) {
-				styleElement.removeChild(styleElement.firstChild);
-			}
-			styleElement.appendChild(document.createTextNode(css));
-		}
-	}
-	
-	function updateLink(linkElement, obj) {
-		var css = obj.css;
-		var sourceMap = obj.sourceMap;
-	
-		if(sourceMap) {
-			// http://stackoverflow.com/a/26603875
-			css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
-		}
-	
-		var blob = new Blob([css], { type: "text/css" });
-	
-		var oldSrc = linkElement.href;
-	
-		linkElement.href = URL.createObjectURL(blob);
-	
-		if(oldSrc)
-			URL.revokeObjectURL(oldSrc);
-	}
-
-
-/***/ },
-/* 187 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, "__esModule", {
-	    value: true
-	});
-	exports.Engine = undefined;
-	
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-	
-	var _react = __webpack_require__(2);
-	
-	var _react2 = _interopRequireDefault(_react);
-	
-	var _Ship = __webpack_require__(180);
-	
-	var _Ship2 = _interopRequireDefault(_Ship);
-	
-	var _Block = __webpack_require__(181);
-	
-	var _Block2 = _interopRequireDefault(_Block);
-	
-	var _Neurovolution = __webpack_require__(182);
-	
-	var _Neurovolution2 = _interopRequireDefault(_Neurovolution);
-	
-	var _Boundary = __webpack_require__(188);
-	
-	var _Boundary2 = _interopRequireDefault(_Boundary);
-	
-	var _seedrandom = __webpack_require__(189);
-	
-	var _seedrandom2 = _interopRequireDefault(_seedrandom);
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-	
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-	
-	var Engine = exports.Engine = function (_React$Component) {
-	    _inherits(Engine, _React$Component);
-	
-	    function Engine() {
-	        _classCallCheck(this, Engine);
-	
-	        var _this = _possibleConstructorReturn(this, (Engine.__proto__ || Object.getPrototypeOf(Engine)).call(this));
-	
-	        _this.state = {
-	            screen: {
-	                width: 500,
-	                height: 500,
-	                ratio: window.devicePixelRatio || 1
-	            },
-	            context: null,
-	            keys: {
-	                up: 0,
-	                down: 0
-	            },
-	            score: 0,
-	            maxScore: 0,
-	            generation: 0,
-	            shipsAlive: 0
-	        };
-	        _this.rng = (0, _seedrandom2.default)(Math.random());
-	        _this.population = 50;
-	        _this.network = [6, [10, 10, 4], 1];
-	        _this.ships = [];
-	        _this.blocks = [];
-	        _this.lowerBoundary = null;
-	        _this.upperBoundary = null;
-	        _this.blockWidth = 20;
-	        _this.boundaryHeight = 50;
-	        _this.blockGenInterval = 100;
-	        _this.blockGenCounter = 0;
-	        _this.neuvol = null;
-	        _this.gen = null;
-	        _this.myrng = null;
-	        return _this;
-	    }
-	
-	    _createClass(Engine, [{
-	        key: 'componentDidMount',
-	        value: function componentDidMount() {
-	            var _this2 = this;
-	
-	            // Fetch canvas context
-	            var context = this.refs.canvas.getContext('2d');
-	            this.setState({ context: context });
-	
-	            // Initialize neurovolution library
-	            this.neuvol = new _Neurovolution2.default({
-	                population: this.population,
-	                network: this.network,
-	                nbChild: 8,
-	                mutationRate: 0.2
-	            });
-	
-	            this.startGame();
-	
-	            requestAnimationFrame(function () {
-	                return _this2.update();
-	            });
-	        }
-	    }, {
-	        key: 'update',
-	        value: function update() {
-	            var _this3 = this;
-	
-	            // If not ships alive, restart the game
-	            if (!this.ships.length) this.startGame();
-	
-	            // Update the current and max scores
-	            this.setState({
-	                score: this.state.score + 1
-	            });
-	
-	            if (this.state.score > this.state.maxScore) this.setState({
-	                maxScore: this.state.score
-	            });
-	
-	            var context = this.state.context;
-	            context.save();
-	
-	            // Render the background
-	            // Setting globalAlpha to 0.4 gives a motion trail effect
-	            context.fillStyle = '#000';
-	            context.globalAlpha = 0.4;
-	            context.fillRect(0, 0, this.state.screen.width, this.state.screen.height);
-	            context.globalAlpha = 1;
-	
-	            this.blockGenCounter += 1;
-	
-	            if (this.blockGenCounter === this.blockGenInterval) {
-	                this.blockGenCounter = 0;
-	                this.generateBlock();
-	            }
-	
-	            // Check for collisions between the ships and incoming blocks
-	            this.checkCollisionWithBlocks(this.ships);
-	
-	            // Check if ships collided with a boundary
-	            this.checkCollisionWithBoundaries(this.ships);
-	
-	            // Remove objects that have been destroyed from their respective lists
-	            this.cleanUp();
-	
-	            // Render all objects to the canvas
-	            this.renderObjects();
-	
-	            context.restore();
-	
-	            requestAnimationFrame(function () {
-	                return _this3.update();
-	            });
-	        }
-	    }, {
-	        key: 'checkCollisionWithBlocks',
-	        value: function checkCollisionWithBlocks(objectList) {
-	            var _iteratorNormalCompletion = true;
-	            var _didIteratorError = false;
-	            var _iteratorError = undefined;
-	
-	            try {
-	                for (var _iterator = objectList[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-	                    var object = _step.value;
-	                    var _iteratorNormalCompletion2 = true;
-	                    var _didIteratorError2 = false;
-	                    var _iteratorError2 = undefined;
-	
-	                    try {
-	                        for (var _iterator2 = this.blocks[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-	                            var block = _step2.value;
-	
-	                            var objectX = object.position.x - object.size + 10;
-	                            var objectY = object.position.y - object.size;
-	
-	                            // Check for collision between two rectangles
-	                            // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
-	                            if (objectX < block.position.x + block.width && objectX + object.size * 2 > block.position.x && objectY < block.position.y + block.height && objectY + object.size * 2 > block.position.y) object.destroy();
-	                        }
-	                    } catch (err) {
-	                        _didIteratorError2 = true;
-	                        _iteratorError2 = err;
-	                    } finally {
-	                        try {
-	                            if (!_iteratorNormalCompletion2 && _iterator2.return) {
-	                                _iterator2.return();
-	                            }
-	                        } finally {
-	                            if (_didIteratorError2) {
-	                                throw _iteratorError2;
-	                            }
-	                        }
-	                    }
-	                }
-	            } catch (err) {
-	                _didIteratorError = true;
-	                _iteratorError = err;
-	            } finally {
-	                try {
-	                    if (!_iteratorNormalCompletion && _iterator.return) {
-	                        _iterator.return();
-	                    }
-	                } finally {
-	                    if (_didIteratorError) {
-	                        throw _iteratorError;
-	                    }
-	                }
-	            }
-	        }
-	    }, {
-	        key: 'checkCollisionWithBoundaries',
-	        value: function checkCollisionWithBoundaries(objectList) {
-	            if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null) return;
-	
-	            // Check if object is not between the two boundaries
-	            var _iteratorNormalCompletion3 = true;
-	            var _didIteratorError3 = false;
-	            var _iteratorError3 = undefined;
-	
-	            try {
-	                for (var _iterator3 = objectList[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-	                    var object = _step3.value;
-	
-	                    if (object.position.y + object.size > this.lowerBoundary.edgePos || object.position.y - object.size < this.upperBoundary.edgePos) object.destroy();
-	                }
-	            } catch (err) {
-	                _didIteratorError3 = true;
-	                _iteratorError3 = err;
-	            } finally {
-	                try {
-	                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
-	                        _iterator3.return();
-	                    }
-	                } finally {
-	                    if (_didIteratorError3) {
-	                        throw _iteratorError3;
-	                    }
-	                }
-	            }
-	        }
-	    }, {
-	        key: 'generateBlock',
-	        value: function generateBlock() {
-	            if (this.lowerBoundary.edgePos == null || this.upperBoundary.edgePos == null) return;
-	
-	            var spawnSpace = this.state.screen.height - this.boundaryHeight * 2;
-	            var minBlockHeight = 250;
-	            var maxBlockHeight = spawnSpace - 80;
-	            var blockHeight = this.getRandomInt(minBlockHeight, maxBlockHeight);
-	            var spawnPoint = this.getRandomInt(this.upperBoundary.edgePos, this.lowerBoundary.edgePos - blockHeight);
-	
-	            var block = new _Block2.default({
-	                position: {
-	                    x: this.state.screen.width,
-	                    y: spawnPoint
-	                },
-	                width: this.blockWidth,
-	                height: blockHeight
-	            });
-	
-	            this.blocks.push(block);
-	        }
-	    }, {
-	        key: 'getRandomInt',
-	        value: function getRandomInt(min, max) {
-	            min = Math.ceil(min);
-	            max = Math.floor(max);
-	            return Math.floor(this.myrng() * (max - min)) + min;
-	        }
-	    }, {
-	        key: 'renderObjects',
-	        value: function renderObjects() {
-	            // Render ships
-	            for (var i = 0; i < this.ships.length; i++) {
-	                var inputs = this.calculateFOV(this.ships[i]);
-	                var output = this.gen[i].compute(inputs);
-	                var keys = {
-	                    up: output[0] > 0.5,
-	                    down: output[0] <= 0.5
-	                };
-	                this.ships[i].render(this.state, keys);
-	            }
-	
-	            // Render blocks
-	            var _iteratorNormalCompletion4 = true;
-	            var _didIteratorError4 = false;
-	            var _iteratorError4 = undefined;
-	
-	            try {
-	                for (var _iterator4 = this.blocks[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-	                    var block = _step4.value;
-	
-	                    block.render(this.state);
-	                } // Render boundaries
-	            } catch (err) {
-	                _didIteratorError4 = true;
-	                _iteratorError4 = err;
-	            } finally {
-	                try {
-	                    if (!_iteratorNormalCompletion4 && _iterator4.return) {
-	                        _iterator4.return();
-	                    }
-	                } finally {
-	                    if (_didIteratorError4) {
-	                        throw _iteratorError4;
-	                    }
-	                }
-	            }
-	
-	            this.upperBoundary.render(this.state);
-	            this.lowerBoundary.render(this.state);
-	        }
-	    }, {
-	        key: 'cleanUp',
-	        value: function cleanUp() {
-	            var objects = [this.blocks, this.boundaries];
-	            for (var i = 0; i < this.ships.length; i++) {
-	                if (this.ships[i].destroyed) {
-	                    this.neuvol.networkScore(this.gen[i], this.state.score);
-	                    this.ships.splice(i, 1);
-	                    this.gen.splice(i, 1);
-	
-	                    this.setState({
-	                        shipsAlive: this.state.shipsAlive - 1
-	                    });
-	                }
-	            }
-	            for (var _i = 0; _i < objects.length; _i++) {
-	                for (var j = 0; j < objects[_i].length; j++) {
-	                    if (objects[_i][j].destroyed) objects[_i].splice(j, 1);
-	                }
-	            }
-	        }
-	    }, {
-	        key: 'calculateFOV',
-	        value: function calculateFOV(ship) {
-	            if (this.blocks.length == 0) return [ship.position.y - ship.size, -1, -1, -1];
-	            var nextBlock = ship.position.x - ship.size > this.blocks[0].position.x + this.blocks[0].width ? this.blocks[1] : this.blocks[0];
-	            if (!nextBlock) return;
-	            // const ctx = this.state.context;
-	            // ctx.save();
-	            // ctx.fillStyle = 'green';
-	            // ctx.fillRect(ship.position.x, ship.position.y - ship.size, 10, 10); // fill in the pixel at (10,10)
-	            // ctx.restore();
-	            return [ship.position.y - ship.size, nextBlock.position.x, nextBlock.position.y, nextBlock.height, nextBlock.position.y - this.upperBoundary.edgePos > 30, this.lowerBoundary.edgePos - (nextBlock.position.y + nextBlock.height) > 30];
-	        }
-	    }, {
-	        key: 'startGame',
-	        value: function startGame() {
-	            // Reset all the arrays
-	            this.ships = [];
-	            this.blocks = [];
-	            this.boundaries = [];
-	            this.blockGenCounter = 0;
-	            this.myrng = (0, _seedrandom2.default)(this.rng);
-	            // Reset our componenet's state
-	            this.setState({
-	                score: 0,
-	                generation: this.state.generation + 1,
-	                shipsAlive: this.population
-	            });
-	
-	            // Fetch next batch of networks
-	            this.gen = this.neuvol.nextGeneration();
-	
-	            // Create upper and lower boundaries of the game
-	            this.upperBoundary = new _Boundary2.default({
-	                height: this.boundaryHeight,
-	                position: 'top'
-	            });
-	
-	            this.lowerBoundary = new _Boundary2.default({
-	                height: this.boundaryHeight,
-	                position: 'bottom'
-	            });
-	
-	            this.generateBlock();
-	
-	            // Create a ship for each network
-	            for (var i = 0; i < this.gen.length; i++) {
-	                var ship = new _Ship2.default({
-	                    position: {
-	                        x: 40,
-	                        y: this.state.screen.height / 2
-	                    }
-	                });
-	                this.ships.push(ship);
-	            }
-	        }
-	    }, {
-	        key: 'render',
-	        value: function render() {
-	            return _react2.default.createElement(
-	                'div',
-	                null,
-	                _react2.default.createElement(
-	                    'span',
-	                    { className: 'score' },
-	                    'Score: ',
-	                    this.state.score
-	                ),
-	                _react2.default.createElement(
-	                    'span',
-	                    { className: 'max-score' },
-	                    'Max Score: ',
-	                    this.state.maxScore
-	                ),
-	                _react2.default.createElement(
-	                    'span',
-	                    { className: 'generation' },
-	                    'Generation: ',
-	                    this.state.generation
-	                ),
-	                _react2.default.createElement(
-	                    'span',
-	                    { className: 'ships-alive' },
-	                    'Ships Alive: ',
-	                    this.state.shipsAlive,
-	                    ' / ',
-	                    this.population,
-	                    ' '
-	                ),
-	                _react2.default.createElement('canvas', { ref: 'canvas',
-	                    width: this.state.screen.width * this.state.screen.ratio,
-	                    height: this.state.screen.width * this.state.screen.ratio
-	                })
-	            );
-	        }
-	    }]);
-	
-	    return Engine;
-	}(_react2.default.Component);
-
-/***/ },
-/* 188 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -22767,7 +22418,7 @@
 	exports.default = Boundary;
 
 /***/ },
-/* 189 */
+/* 184 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// A library of seedable RNGs implemented in Javascript.
@@ -22782,17 +22433,17 @@
 	// alea, a 53-bit multiply-with-carry generator by Johannes Baagøe.
 	// Period: ~2^116
 	// Reported to pass all BigCrush tests.
-	var alea = __webpack_require__(190);
+	var alea = __webpack_require__(185);
 	
 	// xor128, a pure xor-shift generator by George Marsaglia.
 	// Period: 2^128-1.
 	// Reported to fail: MatrixRank and LinearComp.
-	var xor128 = __webpack_require__(194);
+	var xor128 = __webpack_require__(189);
 	
 	// xorwow, George Marsaglia's 160-bit xor-shift combined plus weyl.
 	// Period: 2^192-2^32
 	// Reported to fail: CollisionOver, SimpPoker, and LinearComp.
-	var xorwow = __webpack_require__(195);
+	var xorwow = __webpack_require__(190);
 	
 	// xorshift7, by François Panneton and Pierre L'ecuyer, takes
 	// a different approach: it adds robustness by allowing more shifts
@@ -22800,7 +22451,7 @@
 	// with 256 bits, that passes BigCrush with no systmatic failures.
 	// Period 2^256-1.
 	// No systematic BigCrush failures reported.
-	var xorshift7 = __webpack_require__(196);
+	var xorshift7 = __webpack_require__(191);
 	
 	// xor4096, by Richard Brent, is a 4096-bit xor-shift with a
 	// very long period that also adds a Weyl generator. It also passes
@@ -22809,18 +22460,18 @@
 	// collisions.
 	// Period: 2^4128-2^32.
 	// No systematic BigCrush failures reported.
-	var xor4096 = __webpack_require__(197);
+	var xor4096 = __webpack_require__(192);
 	
 	// Tyche-i, by Samuel Neves and Filipe Araujo, is a bit-shifting random
 	// number generator derived from ChaCha, a modern stream cipher.
 	// https://eden.dei.uc.pt/~sneves/pubs/2011-snfa2.pdf
 	// Period: ~2^127
 	// No systematic BigCrush failures reported.
-	var tychei = __webpack_require__(198);
+	var tychei = __webpack_require__(193);
 	
 	// The original ARC4-based prng included in this library.
 	// Period: ~2^1600
-	var sr = __webpack_require__(199);
+	var sr = __webpack_require__(194);
 	
 	sr.alea = alea;
 	sr.xor128 = xor128;
@@ -22833,7 +22484,7 @@
 
 
 /***/ },
-/* 190 */
+/* 185 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {// A port of an algorithm by Johannes Baagøe <baagoe@baagoe.com>, 2010
@@ -22937,7 +22588,7 @@
 	
 	if (module && module.exports) {
 	  module.exports = impl;
-	} else if (__webpack_require__(192) && __webpack_require__(193)) {
+	} else if (__webpack_require__(187) && __webpack_require__(188)) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return impl; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	} else {
 	  this.alea = impl;
@@ -22946,15 +22597,15 @@
 	})(
 	  this,
 	  (typeof module) == 'object' && module,    // present in node.js
-	  __webpack_require__(192)   // present with an AMD loader
+	  __webpack_require__(187)   // present with an AMD loader
 	);
 	
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(191)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(186)(module)))
 
 /***/ },
-/* 191 */
+/* 186 */
 /***/ function(module, exports) {
 
 	module.exports = function(module) {
@@ -22970,14 +22621,14 @@
 
 
 /***/ },
-/* 192 */
+/* 187 */
 /***/ function(module, exports) {
 
 	module.exports = function() { throw new Error("define cannot be used indirect"); };
 
 
 /***/ },
-/* 193 */
+/* 188 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {module.exports = __webpack_amd_options__;
@@ -22985,7 +22636,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, {}))
 
 /***/ },
-/* 194 */
+/* 189 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {// A Javascript implementaion of the "xor128" prng algorithm by
@@ -23056,7 +22707,7 @@
 	
 	if (module && module.exports) {
 	  module.exports = impl;
-	} else if (__webpack_require__(192) && __webpack_require__(193)) {
+	} else if (__webpack_require__(187) && __webpack_require__(188)) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return impl; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	} else {
 	  this.xor128 = impl;
@@ -23065,15 +22716,15 @@
 	})(
 	  this,
 	  (typeof module) == 'object' && module,    // present in node.js
-	  __webpack_require__(192)   // present with an AMD loader
+	  __webpack_require__(187)   // present with an AMD loader
 	);
 	
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(191)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(186)(module)))
 
 /***/ },
-/* 195 */
+/* 190 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {// A Javascript implementaion of the "xorwow" prng algorithm by
@@ -23149,7 +22800,7 @@
 	
 	if (module && module.exports) {
 	  module.exports = impl;
-	} else if (__webpack_require__(192) && __webpack_require__(193)) {
+	} else if (__webpack_require__(187) && __webpack_require__(188)) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return impl; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	} else {
 	  this.xorwow = impl;
@@ -23158,15 +22809,15 @@
 	})(
 	  this,
 	  (typeof module) == 'object' && module,    // present in node.js
-	  __webpack_require__(192)   // present with an AMD loader
+	  __webpack_require__(187)   // present with an AMD loader
 	);
 	
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(191)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(186)(module)))
 
 /***/ },
-/* 196 */
+/* 191 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {// A Javascript implementaion of the "xorshift7" algorithm by
@@ -23254,7 +22905,7 @@
 	
 	if (module && module.exports) {
 	  module.exports = impl;
-	} else if (__webpack_require__(192) && __webpack_require__(193)) {
+	} else if (__webpack_require__(187) && __webpack_require__(188)) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return impl; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	} else {
 	  this.xorshift7 = impl;
@@ -23263,14 +22914,14 @@
 	})(
 	  this,
 	  (typeof module) == 'object' && module,    // present in node.js
-	  __webpack_require__(192)   // present with an AMD loader
+	  __webpack_require__(187)   // present with an AMD loader
 	);
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(191)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(186)(module)))
 
 /***/ },
-/* 197 */
+/* 192 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {// A Javascript implementaion of Richard Brent's Xorgens xor4096 algorithm.
@@ -23408,7 +23059,7 @@
 	
 	if (module && module.exports) {
 	  module.exports = impl;
-	} else if (__webpack_require__(192) && __webpack_require__(193)) {
+	} else if (__webpack_require__(187) && __webpack_require__(188)) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return impl; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	} else {
 	  this.xor4096 = impl;
@@ -23417,13 +23068,13 @@
 	})(
 	  this,                                     // window object or global
 	  (typeof module) == 'object' && module,    // present in node.js
-	  __webpack_require__(192)   // present with an AMD loader
+	  __webpack_require__(187)   // present with an AMD loader
 	);
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(191)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(186)(module)))
 
 /***/ },
-/* 198 */
+/* 193 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {// A Javascript implementaion of the "Tyche-i" prng algorithm by
@@ -23516,7 +23167,7 @@
 	
 	if (module && module.exports) {
 	  module.exports = impl;
-	} else if (__webpack_require__(192) && __webpack_require__(193)) {
+	} else if (__webpack_require__(187) && __webpack_require__(188)) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return impl; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	} else {
 	  this.tychei = impl;
@@ -23525,15 +23176,15 @@
 	})(
 	  this,
 	  (typeof module) == 'object' && module,    // present in node.js
-	  __webpack_require__(192)   // present with an AMD loader
+	  __webpack_require__(187)   // present with an AMD loader
 	);
 	
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(191)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(186)(module)))
 
 /***/ },
-/* 199 */
+/* 194 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/*
@@ -23767,7 +23418,7 @@
 	  module.exports = seedrandom;
 	  // When in node.js, try using crypto package for autoseeding.
 	  try {
-	    nodecrypto = __webpack_require__(200);
+	    nodecrypto = __webpack_require__(195);
 	  } catch (ex) {}
 	} else if (true) {
 	  !(__WEBPACK_AMD_DEFINE_RESULT__ = function() { return seedrandom; }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -23781,10 +23432,10 @@
 
 
 /***/ },
-/* 200 */
+/* 195 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var rng = __webpack_require__(205)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var rng = __webpack_require__(200)
 	
 	function error () {
 	  var m = [].slice.call(arguments).join(' ')
@@ -23795,9 +23446,9 @@
 	    ].join('\n'))
 	}
 	
-	exports.createHash = __webpack_require__(207)
+	exports.createHash = __webpack_require__(202)
 	
-	exports.createHmac = __webpack_require__(219)
+	exports.createHmac = __webpack_require__(214)
 	
 	exports.randomBytes = function(size, callback) {
 	  if (callback && callback.call) {
@@ -23818,7 +23469,7 @@
 	  return ['sha1', 'sha256', 'sha512', 'md5', 'rmd160']
 	}
 	
-	var p = __webpack_require__(220)(exports)
+	var p = __webpack_require__(215)(exports)
 	exports.pbkdf2 = p.pbkdf2
 	exports.pbkdf2Sync = p.pbkdf2Sync
 	
@@ -23838,10 +23489,10 @@
 	  }
 	})
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer))
 
 /***/ },
-/* 201 */
+/* 196 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer, global) {/*!
@@ -23854,9 +23505,9 @@
 	
 	'use strict'
 	
-	var base64 = __webpack_require__(202)
-	var ieee754 = __webpack_require__(203)
-	var isArray = __webpack_require__(204)
+	var base64 = __webpack_require__(197)
+	var ieee754 = __webpack_require__(198)
+	var isArray = __webpack_require__(199)
 	
 	exports.Buffer = Buffer
 	exports.SlowBuffer = SlowBuffer
@@ -25634,10 +25285,10 @@
 	  return val !== val // eslint-disable-line no-self-compare
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer, (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer, (function() { return this; }())))
 
 /***/ },
-/* 202 */
+/* 197 */
 /***/ function(module, exports) {
 
 	'use strict'
@@ -25757,7 +25408,7 @@
 
 
 /***/ },
-/* 203 */
+/* 198 */
 /***/ function(module, exports) {
 
 	exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -25847,7 +25498,7 @@
 
 
 /***/ },
-/* 204 */
+/* 199 */
 /***/ function(module, exports) {
 
 	var toString = {}.toString;
@@ -25858,13 +25509,13 @@
 
 
 /***/ },
-/* 205 */
+/* 200 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, Buffer) {(function() {
 	  var g = ('undefined' === typeof window ? global : window) || {}
 	  _crypto = (
-	    g.crypto || g.msCrypto || __webpack_require__(206)
+	    g.crypto || g.msCrypto || __webpack_require__(201)
 	  )
 	  module.exports = function(size) {
 	    // Modern Browsers
@@ -25888,22 +25539,22 @@
 	  }
 	}())
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(196).Buffer))
 
 /***/ },
-/* 206 */
+/* 201 */
 /***/ function(module, exports) {
 
 	/* (ignored) */
 
 /***/ },
-/* 207 */
+/* 202 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(208)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(203)
 	
-	var md5 = toConstructor(__webpack_require__(216))
-	var rmd160 = toConstructor(__webpack_require__(218))
+	var md5 = toConstructor(__webpack_require__(211))
+	var rmd160 = toConstructor(__webpack_require__(213))
 	
 	function toConstructor (fn) {
 	  return function () {
@@ -25931,10 +25582,10 @@
 	  return createHash(alg)
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer))
 
 /***/ },
-/* 208 */
+/* 203 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var exports = module.exports = function (alg) {
@@ -25943,16 +25594,16 @@
 	  return new Alg()
 	}
 	
-	var Buffer = __webpack_require__(201).Buffer
-	var Hash   = __webpack_require__(209)(Buffer)
+	var Buffer = __webpack_require__(196).Buffer
+	var Hash   = __webpack_require__(204)(Buffer)
 	
-	exports.sha1 = __webpack_require__(210)(Buffer, Hash)
-	exports.sha256 = __webpack_require__(214)(Buffer, Hash)
-	exports.sha512 = __webpack_require__(215)(Buffer, Hash)
+	exports.sha1 = __webpack_require__(205)(Buffer, Hash)
+	exports.sha256 = __webpack_require__(209)(Buffer, Hash)
+	exports.sha512 = __webpack_require__(210)(Buffer, Hash)
 
 
 /***/ },
-/* 209 */
+/* 204 */
 /***/ function(module, exports) {
 
 	module.exports = function (Buffer) {
@@ -26035,7 +25686,7 @@
 
 
 /***/ },
-/* 210 */
+/* 205 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -26047,7 +25698,7 @@
 	 * See http://pajhome.org.uk/crypt/md5 for details.
 	 */
 	
-	var inherits = __webpack_require__(211).inherits
+	var inherits = __webpack_require__(206).inherits
 	
 	module.exports = function (Buffer, Hash) {
 	
@@ -26179,7 +25830,7 @@
 
 
 /***/ },
-/* 211 */
+/* 206 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -26707,7 +26358,7 @@
 	}
 	exports.isPrimitive = isPrimitive;
 	
-	exports.isBuffer = __webpack_require__(212);
+	exports.isBuffer = __webpack_require__(207);
 	
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -26751,7 +26402,7 @@
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(213);
+	exports.inherits = __webpack_require__(208);
 	
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -26772,7 +26423,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(4)))
 
 /***/ },
-/* 212 */
+/* 207 */
 /***/ function(module, exports) {
 
 	module.exports = function isBuffer(arg) {
@@ -26783,7 +26434,7 @@
 	}
 
 /***/ },
-/* 213 */
+/* 208 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -26812,7 +26463,7 @@
 
 
 /***/ },
-/* 214 */
+/* 209 */
 /***/ function(module, exports, __webpack_require__) {
 
 	
@@ -26824,7 +26475,7 @@
 	 *
 	 */
 	
-	var inherits = __webpack_require__(211).inherits
+	var inherits = __webpack_require__(206).inherits
 	
 	module.exports = function (Buffer, Hash) {
 	
@@ -26965,10 +26616,10 @@
 
 
 /***/ },
-/* 215 */
+/* 210 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var inherits = __webpack_require__(211).inherits
+	var inherits = __webpack_require__(206).inherits
 	
 	module.exports = function (Buffer, Hash) {
 	  var K = [
@@ -27215,7 +26866,7 @@
 
 
 /***/ },
-/* 216 */
+/* 211 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -27227,7 +26878,7 @@
 	 * See http://pajhome.org.uk/crypt/md5 for more info.
 	 */
 	
-	var helpers = __webpack_require__(217);
+	var helpers = __webpack_require__(212);
 	
 	/*
 	 * Calculate the MD5 of an array of little-endian words, and a bit length
@@ -27376,7 +27027,7 @@
 
 
 /***/ },
-/* 217 */
+/* 212 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {var intSize = 4;
@@ -27414,10 +27065,10 @@
 	
 	module.exports = { hash: hash };
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer))
 
 /***/ },
-/* 218 */
+/* 213 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {
@@ -27626,13 +27277,13 @@
 	
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer))
 
 /***/ },
-/* 219 */
+/* 214 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(207)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var createHash = __webpack_require__(202)
 	
 	var zeroBuffer = new Buffer(128)
 	zeroBuffer.fill(0)
@@ -27676,13 +27327,13 @@
 	}
 	
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer))
 
 /***/ },
-/* 220 */
+/* 215 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var pbkdf2Export = __webpack_require__(221)
+	var pbkdf2Export = __webpack_require__(216)
 	
 	module.exports = function (crypto, exports) {
 	  exports = exports || {}
@@ -27697,7 +27348,7 @@
 
 
 /***/ },
-/* 221 */
+/* 216 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {module.exports = function(crypto) {
@@ -27785,7 +27436,355 @@
 	  }
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(201).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(196).Buffer))
+
+/***/ },
+/* 217 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// style-loader: Adds some css to the DOM by adding a <style> tag
+	
+	// load the styles
+	var content = __webpack_require__(218);
+	if(typeof content === 'string') content = [[module.id, content, '']];
+	// add the styles to the DOM
+	var update = __webpack_require__(220)(content, {});
+	if(content.locals) module.exports = content.locals;
+	// Hot Module Replacement
+	if(false) {
+		// When the styles change, update the <style> tags
+		if(!content.locals) {
+			module.hot.accept("!!./../node_modules/css-loader/index.js!./style.css", function() {
+				var newContent = require("!!./../node_modules/css-loader/index.js!./style.css");
+				if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+				update(newContent);
+			});
+		}
+		// When the module is disposed, remove the <style> tags
+		module.hot.dispose(function() { update(); });
+	}
+
+/***/ },
+/* 218 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports = module.exports = __webpack_require__(219)();
+	// imports
+	
+	
+	// module
+	exports.push([module.id, ".score{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.max-score{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 15px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.generation{\n    display: inline-block;\n    position: absolute;\n    top: 10px;\n    left: 340px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}\n\n.ships-alive{\n    display: inline-block;\n    position: absolute;\n    top: 30px;\n    left: 340px;\n    z-index: 1;\n    font-size: 18px;\n    color: white;\n}", ""]);
+	
+	// exports
+
+
+/***/ },
+/* 219 */
+/***/ function(module, exports) {
+
+	/*
+		MIT License http://www.opensource.org/licenses/mit-license.php
+		Author Tobias Koppers @sokra
+	*/
+	// css base code, injected by the css-loader
+	module.exports = function() {
+		var list = [];
+	
+		// return the list of modules as css string
+		list.toString = function toString() {
+			var result = [];
+			for(var i = 0; i < this.length; i++) {
+				var item = this[i];
+				if(item[2]) {
+					result.push("@media " + item[2] + "{" + item[1] + "}");
+				} else {
+					result.push(item[1]);
+				}
+			}
+			return result.join("");
+		};
+	
+		// import a list of modules into the list
+		list.i = function(modules, mediaQuery) {
+			if(typeof modules === "string")
+				modules = [[null, modules, ""]];
+			var alreadyImportedModules = {};
+			for(var i = 0; i < this.length; i++) {
+				var id = this[i][0];
+				if(typeof id === "number")
+					alreadyImportedModules[id] = true;
+			}
+			for(i = 0; i < modules.length; i++) {
+				var item = modules[i];
+				// skip already imported module
+				// this implementation is not 100% perfect for weird media query combinations
+				//  when a module is imported multiple times with different media queries.
+				//  I hope this will never occur (Hey this way we have smaller bundles)
+				if(typeof item[0] !== "number" || !alreadyImportedModules[item[0]]) {
+					if(mediaQuery && !item[2]) {
+						item[2] = mediaQuery;
+					} else if(mediaQuery) {
+						item[2] = "(" + item[2] + ") and (" + mediaQuery + ")";
+					}
+					list.push(item);
+				}
+			}
+		};
+		return list;
+	};
+
+
+/***/ },
+/* 220 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*
+		MIT License http://www.opensource.org/licenses/mit-license.php
+		Author Tobias Koppers @sokra
+	*/
+	var stylesInDom = {},
+		memoize = function(fn) {
+			var memo;
+			return function () {
+				if (typeof memo === "undefined") memo = fn.apply(this, arguments);
+				return memo;
+			};
+		},
+		isOldIE = memoize(function() {
+			return /msie [6-9]\b/.test(window.navigator.userAgent.toLowerCase());
+		}),
+		getHeadElement = memoize(function () {
+			return document.head || document.getElementsByTagName("head")[0];
+		}),
+		singletonElement = null,
+		singletonCounter = 0,
+		styleElementsInsertedAtTop = [];
+	
+	module.exports = function(list, options) {
+		if(false) {
+			if(typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
+		}
+	
+		options = options || {};
+		// Force single-tag solution on IE6-9, which has a hard limit on the # of <style>
+		// tags it will allow on a page
+		if (typeof options.singleton === "undefined") options.singleton = isOldIE();
+	
+		// By default, add <style> tags to the bottom of <head>.
+		if (typeof options.insertAt === "undefined") options.insertAt = "bottom";
+	
+		var styles = listToStyles(list);
+		addStylesToDom(styles, options);
+	
+		return function update(newList) {
+			var mayRemove = [];
+			for(var i = 0; i < styles.length; i++) {
+				var item = styles[i];
+				var domStyle = stylesInDom[item.id];
+				domStyle.refs--;
+				mayRemove.push(domStyle);
+			}
+			if(newList) {
+				var newStyles = listToStyles(newList);
+				addStylesToDom(newStyles, options);
+			}
+			for(var i = 0; i < mayRemove.length; i++) {
+				var domStyle = mayRemove[i];
+				if(domStyle.refs === 0) {
+					for(var j = 0; j < domStyle.parts.length; j++)
+						domStyle.parts[j]();
+					delete stylesInDom[domStyle.id];
+				}
+			}
+		};
+	}
+	
+	function addStylesToDom(styles, options) {
+		for(var i = 0; i < styles.length; i++) {
+			var item = styles[i];
+			var domStyle = stylesInDom[item.id];
+			if(domStyle) {
+				domStyle.refs++;
+				for(var j = 0; j < domStyle.parts.length; j++) {
+					domStyle.parts[j](item.parts[j]);
+				}
+				for(; j < item.parts.length; j++) {
+					domStyle.parts.push(addStyle(item.parts[j], options));
+				}
+			} else {
+				var parts = [];
+				for(var j = 0; j < item.parts.length; j++) {
+					parts.push(addStyle(item.parts[j], options));
+				}
+				stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
+			}
+		}
+	}
+	
+	function listToStyles(list) {
+		var styles = [];
+		var newStyles = {};
+		for(var i = 0; i < list.length; i++) {
+			var item = list[i];
+			var id = item[0];
+			var css = item[1];
+			var media = item[2];
+			var sourceMap = item[3];
+			var part = {css: css, media: media, sourceMap: sourceMap};
+			if(!newStyles[id])
+				styles.push(newStyles[id] = {id: id, parts: [part]});
+			else
+				newStyles[id].parts.push(part);
+		}
+		return styles;
+	}
+	
+	function insertStyleElement(options, styleElement) {
+		var head = getHeadElement();
+		var lastStyleElementInsertedAtTop = styleElementsInsertedAtTop[styleElementsInsertedAtTop.length - 1];
+		if (options.insertAt === "top") {
+			if(!lastStyleElementInsertedAtTop) {
+				head.insertBefore(styleElement, head.firstChild);
+			} else if(lastStyleElementInsertedAtTop.nextSibling) {
+				head.insertBefore(styleElement, lastStyleElementInsertedAtTop.nextSibling);
+			} else {
+				head.appendChild(styleElement);
+			}
+			styleElementsInsertedAtTop.push(styleElement);
+		} else if (options.insertAt === "bottom") {
+			head.appendChild(styleElement);
+		} else {
+			throw new Error("Invalid value for parameter 'insertAt'. Must be 'top' or 'bottom'.");
+		}
+	}
+	
+	function removeStyleElement(styleElement) {
+		styleElement.parentNode.removeChild(styleElement);
+		var idx = styleElementsInsertedAtTop.indexOf(styleElement);
+		if(idx >= 0) {
+			styleElementsInsertedAtTop.splice(idx, 1);
+		}
+	}
+	
+	function createStyleElement(options) {
+		var styleElement = document.createElement("style");
+		styleElement.type = "text/css";
+		insertStyleElement(options, styleElement);
+		return styleElement;
+	}
+	
+	function createLinkElement(options) {
+		var linkElement = document.createElement("link");
+		linkElement.rel = "stylesheet";
+		insertStyleElement(options, linkElement);
+		return linkElement;
+	}
+	
+	function addStyle(obj, options) {
+		var styleElement, update, remove;
+	
+		if (options.singleton) {
+			var styleIndex = singletonCounter++;
+			styleElement = singletonElement || (singletonElement = createStyleElement(options));
+			update = applyToSingletonTag.bind(null, styleElement, styleIndex, false);
+			remove = applyToSingletonTag.bind(null, styleElement, styleIndex, true);
+		} else if(obj.sourceMap &&
+			typeof URL === "function" &&
+			typeof URL.createObjectURL === "function" &&
+			typeof URL.revokeObjectURL === "function" &&
+			typeof Blob === "function" &&
+			typeof btoa === "function") {
+			styleElement = createLinkElement(options);
+			update = updateLink.bind(null, styleElement);
+			remove = function() {
+				removeStyleElement(styleElement);
+				if(styleElement.href)
+					URL.revokeObjectURL(styleElement.href);
+			};
+		} else {
+			styleElement = createStyleElement(options);
+			update = applyToTag.bind(null, styleElement);
+			remove = function() {
+				removeStyleElement(styleElement);
+			};
+		}
+	
+		update(obj);
+	
+		return function updateStyle(newObj) {
+			if(newObj) {
+				if(newObj.css === obj.css && newObj.media === obj.media && newObj.sourceMap === obj.sourceMap)
+					return;
+				update(obj = newObj);
+			} else {
+				remove();
+			}
+		};
+	}
+	
+	var replaceText = (function () {
+		var textStore = [];
+	
+		return function (index, replacement) {
+			textStore[index] = replacement;
+			return textStore.filter(Boolean).join('\n');
+		};
+	})();
+	
+	function applyToSingletonTag(styleElement, index, remove, obj) {
+		var css = remove ? "" : obj.css;
+	
+		if (styleElement.styleSheet) {
+			styleElement.styleSheet.cssText = replaceText(index, css);
+		} else {
+			var cssNode = document.createTextNode(css);
+			var childNodes = styleElement.childNodes;
+			if (childNodes[index]) styleElement.removeChild(childNodes[index]);
+			if (childNodes.length) {
+				styleElement.insertBefore(cssNode, childNodes[index]);
+			} else {
+				styleElement.appendChild(cssNode);
+			}
+		}
+	}
+	
+	function applyToTag(styleElement, obj) {
+		var css = obj.css;
+		var media = obj.media;
+	
+		if(media) {
+			styleElement.setAttribute("media", media)
+		}
+	
+		if(styleElement.styleSheet) {
+			styleElement.styleSheet.cssText = css;
+		} else {
+			while(styleElement.firstChild) {
+				styleElement.removeChild(styleElement.firstChild);
+			}
+			styleElement.appendChild(document.createTextNode(css));
+		}
+	}
+	
+	function updateLink(linkElement, obj) {
+		var css = obj.css;
+		var sourceMap = obj.sourceMap;
+	
+		if(sourceMap) {
+			// http://stackoverflow.com/a/26603875
+			css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(sourceMap)))) + " */";
+		}
+	
+		var blob = new Blob([css], { type: "text/css" });
+	
+		var oldSrc = linkElement.href;
+	
+		linkElement.href = URL.createObjectURL(blob);
+	
+		if(oldSrc)
+			URL.revokeObjectURL(oldSrc);
+	}
+
 
 /***/ }
 /******/ ]);
